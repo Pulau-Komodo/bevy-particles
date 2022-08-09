@@ -1,7 +1,7 @@
 use bevy::diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 
-use crate::Particle;
+use crate::particle::Particle;
 
 pub struct GuiPlugin;
 
