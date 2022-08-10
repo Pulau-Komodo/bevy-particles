@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use gui::GuiPlugin;
 use input::InputPlugin;
 use particle::ParticlePlugin;
+use particle_attractor::ParticleAttractorPlugin;
 use particle_deleter::ParticleDeleterPlugin;
 use particle_emitter::ParticleEmitterPlugin;
 
@@ -11,6 +12,7 @@ mod gui;
 mod input;
 mod macros;
 mod particle;
+mod particle_attractor;
 mod particle_deleter;
 mod particle_emitter;
 
@@ -31,6 +33,7 @@ fn main() {
 		.add_plugin(ParticlePlugin)
 		.add_plugin(ParticleEmitterPlugin)
 		.add_plugin(ParticleDeleterPlugin)
+		.add_plugin(ParticleAttractorPlugin)
 		.add_plugin(GuiPlugin)
 		.add_startup_system(spawn_camera)
 		.run();

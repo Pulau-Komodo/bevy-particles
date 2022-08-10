@@ -15,21 +15,32 @@ pub enum Action {
 	SpawnParticle,
 	SpawnEmitter,
 	SpawnDeleter,
+	SpawnAttractor,
 	DespawnEmitter,
 	DespawnDeleter,
+	DespawnAttractor,
+	SuspendRepulsion,
 }
 
 fn set_binds(mut commands: Commands) {
 	use Action::*;
+	use KeyCode::*;
+
+	let actions = vec![
+		(Equals, SpawnEmitter, DespawnEmitter),
+		(Minus, SpawnDeleter, DespawnDeleter),
+		(Key2, SpawnAttractor, DespawnAttractor),
+	];
 
 	let mut input_map = InputMap::default();
 	input_map.insert(MouseButton::Left, SpawnParticle);
-	input_map.insert(KeyCode::Equals, SpawnEmitter);
-	input_map.insert(KeyCode::Minus, SpawnDeleter);
-	input_map.insert_chord([KeyCode::LShift, KeyCode::Equals], DespawnEmitter);
-	input_map.insert_chord([KeyCode::RShift, KeyCode::Equals], DespawnEmitter);
-	input_map.insert_chord([KeyCode::LShift, KeyCode::Minus], DespawnDeleter);
-	input_map.insert_chord([KeyCode::RShift, KeyCode::Minus], DespawnDeleter);
+	input_map.insert(KeyCode::Space, SuspendRepulsion);
+
+	for (key, spawn, despawn) in actions {
+		input_map.insert(key, spawn);
+		input_map.insert_chord([LShift, key], despawn.clone());
+		input_map.insert_chord([RShift, key], despawn);
+	}
 
 	commands.spawn_bundle(InputManagerBundle::<Action> {
 		input_map,

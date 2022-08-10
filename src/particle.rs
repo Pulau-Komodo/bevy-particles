@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use crate::{common::wrapping_offset_2d, draw_order, input::Action, unwrap_or_return};
+use crate::{
+	common::wrapping_offset_2d, draw_order, input::Action,
+	particle_attractor::activate_particle_attractors, unwrap_or_return,
+};
 
 pub struct ParticlePlugin;
 
@@ -9,7 +12,12 @@ impl Plugin for ParticlePlugin {
 	fn build(&self, app: &mut App) {
 		app.add_system(spawn_particle)
 			.add_system(particles_repelling_each_other)
-			.add_system(move_particles.after(particles_repelling_each_other));
+			.add_system(
+				clamp_particle_speed
+					.after(particles_repelling_each_other)
+					.after(activate_particle_attractors),
+			)
+			.add_system(move_particles.after(clamp_particle_speed));
 	}
 }
 
@@ -19,6 +27,12 @@ const MAX_PARTICLE_SPEED: f32 = 200.0;
 #[derive(Component, Default)]
 pub struct Particle {
 	movement: Vec2,
+}
+
+impl Particle {
+	pub fn add_movement(&mut self, movement: Vec2) {
+		self.movement += movement;
+	}
 }
 
 fn spawn_particle(
