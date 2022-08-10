@@ -52,11 +52,17 @@ fn spawn_particle(
 }
 
 fn particles_repelling_each_other(
-	windows: Res<Windows>,
 	time: Res<Time>,
+	windows: Res<Windows>,
 	mut particles: Query<(&mut Particle, &Transform)>,
+	action_state: Query<&ActionState<Action>>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
+	let action_state = action_state.single();
+
+	if action_state.pressed(Action::SuspendRepulsion) {
+		return;
+	}
 
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some([(mut particle_a, transform_a), (mut particle_b, transform_b)]) =
@@ -73,13 +79,18 @@ fn particles_repelling_each_other(
 			position_b,
 			Vec2::new(window.width(), window.height()),
 		);
-		let force =
-			10000.0 * offset.length_recip().powf(2.0) * offset.normalize() * time.delta_seconds();
+		let force = 10000.0
+			* offset.length_recip().min(0.2).powf(2.0)
+			* offset.normalize()
+			* time.delta_seconds();
 
 		particle_a.movement += force;
 		particle_b.movement -= force;
 	}
-	for (mut particle, _) in &mut particles {
+}
+
+fn clamp_particle_speed(time: Res<Time>, mut particles: Query<&mut Particle>) {
+	for mut particle in &mut particles {
 		particle.movement = particle
 			.movement
 			.clamp_length_max(MAX_PARTICLE_SPEED * time.delta_seconds());
@@ -97,9 +108,16 @@ fn move_particles(windows: Res<Windows>, mut particles: Query<(&mut Transform, &
 	}
 }
 
+#[derive(Bundle)]
+struct ParticleBundle {
+	#[bundle]
+	sprite_bundle: SpriteBundle,
+	particle: Particle,
+}
+
 pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2) {
-	commands
-		.spawn_bundle(SpriteBundle {
+	commands.spawn_bundle(ParticleBundle {
+		sprite_bundle: SpriteBundle {
 			sprite: Sprite {
 				color: Color::WHITE,
 				..default()
@@ -110,6 +128,7 @@ pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2) {
 				..default()
 			},
 			..default()
-		})
-		.insert(Particle::default());
+		},
+		particle: Particle::default(),
+	});
 }
