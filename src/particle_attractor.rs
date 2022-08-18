@@ -5,7 +5,7 @@ use crate::{
 	common::{despawn_gizmo, spawn_gizmo, wrapping_offset_2d},
 	draw_properties,
 	input::Action,
-	particle::Particle,
+	particle::{Movement, Particle},
 	unwrap_or_return,
 };
 
@@ -58,13 +58,13 @@ pub fn activate_particle_attractors(
 	time: Res<Time>,
 	windows: Res<Windows>,
 	attractors: Query<(&ParticleAttractor, &Transform)>,
-	mut particles: Query<(&mut Particle, &Transform)>,
+	mut particles: Query<(&mut Movement, &Transform), With<Particle>>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
 
 	for (attractor, attractor_transform) in &attractors {
 		let attractor_position = attractor_transform.translation.truncate();
-		for (mut particle, particle_transform) in &mut particles {
+		for (mut movement, particle_transform) in &mut particles {
 			let particle_position = particle_transform.translation.truncate();
 			if attractor_position == particle_position {
 				continue;
@@ -80,7 +80,7 @@ pub fn activate_particle_attractors(
 				* offset.normalize()
 				* time.delta_seconds();
 
-			particle.add_movement(force);
+			movement.add(force);
 		}
 	}
 }

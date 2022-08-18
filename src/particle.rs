@@ -17,11 +17,12 @@ impl Plugin for ParticlePlugin {
 			.add_startup_system(spawn_initial_particles)
 			.add_system(spawn_particle)
 			.add_system(toggle_inertia)
-			.add_system(particles_interacting)
-			.add_system(despawn_cancelled_particles.after(particles_interacting))
+			.add_system(particles_applying_forces)
+			.add_system(particles_cancelling)
+			.add_system(despawn_cancelled_particles.after(particles_cancelling))
 			.add_system(
 				clamp_particle_speed
-					.after(particles_interacting)
+					.after(particles_applying_forces)
 					.after(activate_particle_attractors),
 			)
 			.add_system(move_particles.after(clamp_particle_speed));
@@ -52,19 +53,21 @@ fn toggle_inertia(mut inertia: ResMut<Inertia>, action_state: Query<&ActionState
 
 #[derive(Default, Component)]
 pub struct Particle {
-	movement: Vec2,
 	positive: bool,
 }
 
 impl Particle {
 	pub fn new(positive: bool) -> Self {
-		Self {
-			movement: Vec2::ZERO,
-			positive,
-		}
+		Self { positive }
 	}
-	pub fn add_movement(&mut self, movement: Vec2) {
-		self.movement += movement;
+}
+
+#[derive(Default, Component)]
+pub struct Movement(Vec2);
+
+impl Movement {
+	pub fn add(&mut self, movement: Vec2) {
+		self.0 += movement;
 	}
 }
 
@@ -87,10 +90,10 @@ fn spawn_particle(
 	spawn_particle_at_location(&mut commands, cursor_pos, true);
 }
 
-fn particles_interacting(
+fn particles_applying_forces(
 	time: Res<Time>,
 	windows: Res<Windows>,
-	mut particles: Query<(&mut Particle, &mut Cancelled, &Transform)>,
+	mut particles: Query<(&mut Movement, &Particle, &Transform)>,
 	action_state: Query<&ActionState<Action>>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
@@ -102,7 +105,7 @@ fn particles_interacting(
 
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some(
-		[(mut particle_a, mut cancelled_a, transform_a), (mut particle_b, mut cancelled_b, transform_b)],
+		[(mut movement_a, particle_a, transform_a), (mut movement_b, particle_b, transform_b)],
 	) = combinations.fetch_next()
 	{
 		let position_a = transform_a.translation.truncate();
@@ -117,13 +120,6 @@ fn particles_interacting(
 			Vec2::new(window.width(), window.height()),
 		);
 		let invert_force = if particle_a.positive != particle_b.positive {
-			if offset.length_squared() < PARTICLE_CANCEL_DISTANCE.powi(2)
-				&& !cancelled_a.0
-				&& !cancelled_b.0
-			{
-				cancelled_a.0 = true;
-				cancelled_b.0 = true;
-			}
 			-1.0
 		} else {
 			1.0
@@ -137,8 +133,42 @@ fn particles_interacting(
 			* time.delta_seconds()
 			* invert_force;
 
-		particle_a.movement += force;
-		particle_b.movement -= force;
+		movement_a.0 += force;
+		movement_b.0 -= force;
+	}
+}
+
+fn particles_cancelling(
+	windows: Res<Windows>,
+	mut particles: Query<(&mut Cancelled, &Particle, &Transform)>,
+) {
+	let window = unwrap_or_return!(windows.get_primary());
+
+	let mut combinations = particles.iter_combinations_mut();
+	while let Some(
+		[(mut cancelled_a, particle_a, transform_a), (mut cancelled_b, particle_b, transform_b)],
+	) = combinations.fetch_next()
+	{
+		let position_a = transform_a.translation.truncate();
+		let position_b = transform_b.translation.truncate();
+		if position_a == position_b {
+			continue;
+		}
+
+		let offset = wrapping_offset_2d(
+			position_a,
+			position_b,
+			Vec2::new(window.width(), window.height()),
+		);
+
+		if offset.length_squared() < PARTICLE_CANCEL_DISTANCE.powi(2)
+			&& particle_a.positive != particle_b.positive
+			&& !cancelled_a.0
+			&& !cancelled_b.0
+		{
+			cancelled_a.0 = true;
+			cancelled_b.0 = true;
+		}
 	}
 }
 
@@ -153,12 +183,12 @@ fn despawn_cancelled_particles(mut commands: Commands, particles: Query<(Entity,
 fn clamp_particle_speed(
 	time: Res<Time>,
 	inertia: Res<Inertia>,
-	mut particles: Query<&mut Particle>,
+	mut particles: Query<&mut Movement, With<Particle>>,
 ) {
 	if !inertia.0 {
 		for mut particle in &mut particles {
-			particle.movement = particle
-				.movement
+			particle.0 = particle
+				.0
 				.clamp_length_max(MAX_PARTICLE_SPEED * time.delta_seconds());
 		}
 	}
@@ -168,21 +198,21 @@ fn move_particles(
 	time: Res<Time>,
 	windows: Res<Windows>,
 	inertia: Res<Inertia>,
-	mut particles: Query<(&mut Transform, &mut Particle)>,
+	mut particles: Query<(&mut Transform, &mut Movement), With<Particle>>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
 
-	for (mut transform, mut particle) in &mut particles {
-		let movement = if inertia.0 {
-			particle.movement * time.delta_seconds() * 0.5
+	for (mut transform, mut movement) in &mut particles {
+		let movement_to_apply = if inertia.0 {
+			movement.0 * time.delta_seconds() * 0.5
 		} else {
-			particle.movement
+			movement.0
 		};
-		transform.translation += movement.extend(0.0);
+		transform.translation += movement_to_apply.extend(0.0);
 		transform.translation.x = transform.translation.x.rem_euclid(window.width());
 		transform.translation.y = transform.translation.y.rem_euclid(window.height());
 		if !inertia.0 {
-			particle.movement = Vec2::ZERO;
+			movement.0 = Vec2::ZERO;
 		}
 	}
 }
@@ -193,8 +223,10 @@ fn spawn_initial_particles(mut commands: Commands, windows: Res<Windows>) {
 	let smallest_dimension = f32::min(window.width(), window.height());
 	let offset = Vec2::Y * smallest_dimension * 0.9 / 2.0;
 	for n in 0..INITIAL_PARTICLE_COUNT {
-		let position =
-			middle + Mat2::from_angle(n as f32 * std::f32::consts::PI * 2.0 / INITIAL_PARTICLE_COUNT as f32) * offset;
+		let position = middle
+			+ Mat2::from_angle(
+				n as f32 * std::f32::consts::PI * 2.0 / INITIAL_PARTICLE_COUNT as f32,
+			) * offset;
 		spawn_particle_at_location(&mut commands, position, true);
 	}
 }
@@ -204,6 +236,7 @@ struct ParticleBundle {
 	#[bundle]
 	sprite_bundle: SpriteBundle,
 	particle: Particle,
+	movement: Movement,
 	cancelled: Cancelled,
 }
 
