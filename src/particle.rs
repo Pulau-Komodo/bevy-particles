@@ -14,6 +14,7 @@ pub struct ParticlePlugin;
 impl Plugin for ParticlePlugin {
 	fn build(&self, app: &mut App) {
 		app.init_resource::<Inertia>()
+			.add_startup_system(spawn_initial_particles)
 			.add_system(spawn_particle)
 			.add_system(toggle_inertia)
 			.add_system(particles_interacting)
@@ -37,6 +38,8 @@ const DIMINISHING_POWER: f32 = 2.0;
 const MAX_PARTICLE_SPEED: f32 = 200.0;
 /// The distance within which opposing-charge particles will cancel out.
 const PARTICLE_CANCEL_DISTANCE: f32 = 4.0;
+/// How many particles to spawn when the application first launches.
+const INITIAL_PARTICLE_COUNT: u32 = 1000;
 
 #[derive(Default)]
 struct Inertia(bool);
@@ -181,6 +184,18 @@ fn move_particles(
 		if !inertia.0 {
 			particle.movement = Vec2::ZERO;
 		}
+	}
+}
+
+fn spawn_initial_particles(mut commands: Commands, windows: Res<Windows>) {
+	let window = unwrap_or_return!(windows.get_primary());
+	let middle = Vec2::new(window.width(), window.height()) / 2.0;
+	let smallest_dimension = f32::min(window.width(), window.height());
+	let offset = Vec2::Y * smallest_dimension * 0.9 / 2.0;
+	for n in 0..INITIAL_PARTICLE_COUNT {
+		let position =
+			middle + Mat2::from_angle(n as f32 * std::f32::consts::PI * 2.0 / INITIAL_PARTICLE_COUNT as f32) * offset;
+		spawn_particle_at_location(&mut commands, position, true);
 	}
 }
 
