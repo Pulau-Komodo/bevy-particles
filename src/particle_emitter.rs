@@ -3,7 +3,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
 	common::{despawn_gizmo, spawn_gizmo},
-	draw_order,
+	draw_properties,
 	input::Action,
 	particle::spawn_particle_at_location,
 };
@@ -37,9 +37,7 @@ fn spawn_positive_particle_emitter(
 		windows,
 		action_state,
 		Action::SpawnPositiveEmitter,
-		Vec2::ONE * 15.0,
-		draw_order::EMITTER,
-		Color::GREEN,
+		draw_properties::POSITIVE_EMITTER,
 		ParticleEmitter {
 			interval: 0.1,
 			time_since_emitting: 0.0,
@@ -58,9 +56,7 @@ fn spawn_negative_particle_emitter(
 		windows,
 		action_state,
 		Action::SpawnNegativeEmitter,
-		Vec2::ONE * 15.0,
-		draw_order::EMITTER,
-		Color::PURPLE,
+		draw_properties::NEGATIVE_EMITTER,
 		ParticleEmitter {
 			interval: 0.1,
 			time_since_emitting: 0.0,

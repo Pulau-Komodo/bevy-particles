@@ -2,8 +2,11 @@ use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-	common::wrapping_offset_2d, draw_order, input::Action,
-	particle_attractor::activate_particle_attractors, unwrap_or_return,
+	common::wrapping_offset_2d,
+	draw_properties::{self, DrawProperties},
+	input::Action,
+	particle_attractor::activate_particle_attractors,
+	unwrap_or_return,
 };
 
 pub struct ParticlePlugin;
@@ -190,14 +193,23 @@ struct ParticleBundle {
 }
 
 pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2, positive: bool) {
-	let color = if positive { Color::WHITE } else { Color::PINK };
+	let draw_properties = if positive {
+		draw_properties::POSITIVE_PARTICLE
+	} else {
+		draw_properties::NEGATIVE_PARTICLE
+	};
+	let DrawProperties {
+		draw_priority,
+		size,
+		color,
+	} = draw_properties;
 
 	commands.spawn_bundle(ParticleBundle {
 		sprite_bundle: SpriteBundle {
 			sprite: Sprite { color, ..default() },
 			transform: Transform {
-				translation: position.extend(draw_order::PARTICLE),
-				scale: Vec3::new(5.0, 5.0, 1.0),
+				translation: position.extend(draw_priority),
+				scale: (Vec2::ONE * size).extend(1.0),
 				..default()
 			},
 			..default()

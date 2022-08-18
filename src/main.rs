@@ -7,7 +7,7 @@ use particle_deleter::ParticleDeleterPlugin;
 use particle_emitter::ParticleEmitterPlugin;
 
 mod common;
-mod draw_order;
+mod draw_properties;
 mod gui;
 mod input;
 mod macros;

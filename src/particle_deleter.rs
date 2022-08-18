@@ -3,7 +3,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
 	common::{despawn_gizmo, spawn_gizmo, wrapping_offset_2d},
-	draw_order,
+	draw_properties,
 	input::Action,
 	particle::Particle,
 	unwrap_or_return,
@@ -42,9 +42,7 @@ fn spawn_particle_deleter(
 		windows,
 		action_state,
 		Action::SpawnDeleter,
-		Vec2::ONE * 15.0,
-		draw_order::DELETER,
-		Color::RED,
+		draw_properties::DELETER,
 		ParticleDeleter::new(100.0),
 	);
 }

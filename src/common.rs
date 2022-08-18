@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use crate::{input::Action, unwrap_or_return, CLICK_RADIUS_SQUARED};
+use crate::{
+	draw_properties::DrawProperties, input::Action, unwrap_or_return, CLICK_RADIUS_SQUARED,
+};
 
 pub fn wrapping_offset_2d(first: Vec2, second: Vec2, wrap: Vec2) -> Vec2 {
 	Vec2::new(
@@ -49,15 +51,16 @@ pub fn find_entity_by_cursor<'a>(
 		.map(|(entity, _)| entity)
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn spawn_gizmo<T: Component>(
 	mut commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
 	action: Action,
-	size: Vec2,
-	draw_order: f32,
-	color: Color,
+	DrawProperties {
+		draw_priority,
+		size,
+		color,
+	}: DrawProperties,
 	gizmo: T,
 ) {
 	let action_state = action_state.single();
@@ -72,8 +75,8 @@ pub fn spawn_gizmo<T: Component>(
 		.spawn_bundle(SpriteBundle {
 			sprite: Sprite { color, ..default() },
 			transform: Transform {
-				translation: cursor_pos.extend(draw_order),
-				scale: size.extend(1.0),
+				translation: cursor_pos.extend(draw_priority),
+				scale: (Vec2::ONE * size).extend(1.0),
 				..default()
 			},
 			..default()
