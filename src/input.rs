@@ -22,6 +22,7 @@ pub enum Action {
 	DespawnDeleter,
 	DespawnAttractor,
 	SuspendRepulsion,
+	ToggleInertia,
 }
 
 fn set_binds(mut commands: Commands) {
@@ -37,7 +38,8 @@ fn set_binds(mut commands: Commands) {
 
 	let mut input_map = InputMap::default();
 	input_map.insert(MouseButton::Left, SpawnParticle);
-	input_map.insert(KeyCode::Space, SuspendRepulsion);
+	input_map.insert(Space, SuspendRepulsion);
+	input_map.insert(I, ToggleInertia);
 
 	for (key, spawn, despawn) in actions {
 		input_map.insert(key, spawn);

@@ -10,7 +10,9 @@ pub struct ParticlePlugin;
 
 impl Plugin for ParticlePlugin {
 	fn build(&self, app: &mut App) {
-		app.add_system(spawn_particle)
+		app.init_resource::<Inertia>()
+			.add_system(spawn_particle)
+			.add_system(toggle_inertia)
 			.add_system(particles_interacting)
 			.add_system(despawn_cancelled_particles.after(particles_interacting))
 			.add_system(
@@ -22,14 +24,30 @@ impl Plugin for ParticlePlugin {
 	}
 }
 
+/// The theoretical amount of force applied at 1 pixel distance.
+const BASE_FORCE: f32 = 10000.0;
+/// The force will be applied as if it always has at least this distance.
+const PROXIMITY_FORCE_CAP: f32 = 5.0;
+/// The power to which the distance is raised to diminish force. A higher number means force more quickly diminishes with distance.
+const DIMINISHING_POWER: f32 = 2.0;
 /// Maximum speed of a particle in units/second.
 const MAX_PARTICLE_SPEED: f32 = 200.0;
+/// The distance within which opposing-charge particles will cancel out.
+const PARTICLE_CANCEL_DISTANCE: f32 = 4.0;
 
-#[derive(Component)]
+#[derive(Default)]
+struct Inertia(bool);
+
+fn toggle_inertia(mut inertia: ResMut<Inertia>, action_state: Query<&ActionState<Action>>) {
+	if action_state.single().just_pressed(Action::ToggleInertia) {
+		inertia.0 = !inertia.0;
+	}
+}
+
+#[derive(Default, Component)]
 pub struct Particle {
 	movement: Vec2,
 	positive: bool,
-	cancelled: bool,
 }
 
 impl Particle {
@@ -37,13 +55,15 @@ impl Particle {
 		Self {
 			movement: Vec2::ZERO,
 			positive,
-			cancelled: false,
 		}
 	}
 	pub fn add_movement(&mut self, movement: Vec2) {
 		self.movement += movement;
 	}
 }
+
+#[derive(Default, Component)]
+pub struct Cancelled(bool);
 
 fn spawn_particle(
 	mut commands: Commands,
@@ -64,7 +84,7 @@ fn spawn_particle(
 fn particles_interacting(
 	time: Res<Time>,
 	windows: Res<Windows>,
-	mut particles: Query<(&mut Particle, &Transform)>,
+	mut particles: Query<(&mut Particle, &mut Cancelled, &Transform)>,
 	action_state: Query<&ActionState<Action>>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
@@ -75,8 +95,9 @@ fn particles_interacting(
 	}
 
 	let mut combinations = particles.iter_combinations_mut();
-	while let Some([(mut particle_a, transform_a), (mut particle_b, transform_b)]) =
-		combinations.fetch_next()
+	while let Some(
+		[(mut particle_a, mut cancelled_a, transform_a), (mut particle_b, mut cancelled_b, transform_b)],
+	) = combinations.fetch_next()
 	{
 		let position_a = transform_a.translation.truncate();
 		let position_b = transform_b.translation.truncate();
@@ -90,16 +111,22 @@ fn particles_interacting(
 			Vec2::new(window.width(), window.height()),
 		);
 		let invert_force = if particle_a.positive != particle_b.positive {
-			if offset.length_squared() < 14.0 && !particle_a.cancelled && !particle_b.cancelled {
-				particle_a.cancelled = true;
-				particle_b.cancelled = true;
+			if offset.length_squared() < PARTICLE_CANCEL_DISTANCE.powi(2)
+				&& !cancelled_a.0
+				&& !cancelled_b.0
+			{
+				cancelled_a.0 = true;
+				cancelled_b.0 = true;
 			}
 			-1.0
 		} else {
 			1.0
 		};
-		let force = 10000.0
-			* offset.length_recip().min(0.2).powf(2.0)
+		let force = BASE_FORCE
+			/ offset
+				.length()
+				.max(PROXIMITY_FORCE_CAP)
+				.powf(DIMINISHING_POWER)
 			* offset.normalize()
 			* time.delta_seconds()
 			* invert_force;
@@ -109,38 +136,57 @@ fn particles_interacting(
 	}
 }
 
-fn despawn_cancelled_particles(mut commands: Commands, particles: Query<(Entity, &Particle)>) {
-	for (entity, particle) in &particles {
-		if particle.cancelled {
+fn despawn_cancelled_particles(mut commands: Commands, particles: Query<(Entity, &Cancelled)>) {
+	for (entity, cancelled) in &particles {
+		if cancelled.0 {
 			commands.entity(entity).despawn();
 		}
 	}
 }
 
-fn clamp_particle_speed(time: Res<Time>, mut particles: Query<&mut Particle>) {
-	for mut particle in &mut particles {
-		particle.movement = particle
-			.movement
-			.clamp_length_max(MAX_PARTICLE_SPEED * time.delta_seconds());
+fn clamp_particle_speed(
+	time: Res<Time>,
+	inertia: Res<Inertia>,
+	mut particles: Query<&mut Particle>,
+) {
+	if !inertia.0 {
+		for mut particle in &mut particles {
+			particle.movement = particle
+				.movement
+				.clamp_length_max(MAX_PARTICLE_SPEED * time.delta_seconds());
+		}
 	}
 }
 
-fn move_particles(windows: Res<Windows>, mut particles: Query<(&mut Transform, &mut Particle)>) {
+fn move_particles(
+	time: Res<Time>,
+	windows: Res<Windows>,
+	inertia: Res<Inertia>,
+	mut particles: Query<(&mut Transform, &mut Particle)>,
+) {
 	let window = unwrap_or_return!(windows.get_primary());
 
 	for (mut transform, mut particle) in &mut particles {
-		transform.translation += particle.movement.extend(0.0);
+		let movement = if inertia.0 {
+			particle.movement * time.delta_seconds() * 0.5
+		} else {
+			particle.movement
+		};
+		transform.translation += movement.extend(0.0);
 		transform.translation.x = transform.translation.x.rem_euclid(window.width());
 		transform.translation.y = transform.translation.y.rem_euclid(window.height());
-		particle.movement = Vec2::ZERO;
+		if !inertia.0 {
+			particle.movement = Vec2::ZERO;
+		}
 	}
 }
 
-#[derive(Bundle)]
+#[derive(Default, Bundle)]
 struct ParticleBundle {
 	#[bundle]
 	sprite_bundle: SpriteBundle,
 	particle: Particle,
+	cancelled: Cancelled,
 }
 
 pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2, positive: bool) {
@@ -157,5 +203,6 @@ pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2, posit
 			..default()
 		},
 		particle: Particle::new(positive),
+		..default()
 	});
 }
