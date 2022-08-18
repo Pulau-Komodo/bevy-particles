@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-	common::{find_entity_by_cursor, wrapping_offset_2d},
+	common::{despawn_gizmo, spawn_gizmo, wrapping_offset_2d},
 	draw_order,
 	input::Action,
 	particle::Particle,
@@ -25,54 +25,35 @@ pub struct ParticleAttractor {
 }
 
 fn spawn_particle_attractor(
-	mut commands: Commands,
+	commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
 ) {
-	let action_state = action_state.single();
-	if !action_state.just_pressed(Action::SpawnAttractor) {
-		return;
-	}
-	let cursor_pos = unwrap_or_return!(windows
-		.get_primary()
-		.and_then(|window| window.cursor_position()));
-
-	commands
-		.spawn_bundle(SpriteBundle {
-			sprite: Sprite {
-				color: Color::PURPLE,
-				..default()
-			},
-			transform: Transform {
-				translation: cursor_pos.extend(draw_order::ATTRACTOR),
-				scale: Vec3::new(15.0, 15.0, 1.0),
-				..default()
-			},
-			..default()
-		})
-		.insert(ParticleAttractor { force: 10000.0 });
+	spawn_gizmo(
+		commands,
+		windows,
+		action_state,
+		Action::SpawnAttractor,
+		Vec2::ONE * 15.0,
+		draw_order::ATTRACTOR,
+		Color::PURPLE,
+		ParticleAttractor { force: 10000.0 },
+	);
 }
 
 fn despawn_particle_attractor(
-	mut commands: Commands,
+	commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
-	deleters: Query<(Entity, &Transform), With<ParticleAttractor>>,
+	attractors: Query<(Entity, &Transform), With<ParticleAttractor>>,
 ) {
-	let action_state = action_state.single();
-	if !action_state.just_pressed(Action::DespawnAttractor) {
-		return;
-	}
-	let window = unwrap_or_return!(windows.get_primary());
-	let cursor_pos = unwrap_or_return!(window.cursor_position());
-
-	if let Some(attractor) = find_entity_by_cursor(
-		cursor_pos,
-		Vec2::new(window.width(), window.height()),
-		deleters.iter(),
-	) {
-		commands.entity(attractor).despawn();
-	}
+	despawn_gizmo(
+		commands,
+		windows,
+		action_state,
+		Action::DespawnAttractor,
+		&attractors,
+	);
 }
 
 pub fn activate_particle_attractors(

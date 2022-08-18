@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-	common::{find_entity_by_cursor, wrapping_offset_2d},
+	common::{despawn_gizmo, spawn_gizmo, wrapping_offset_2d},
 	draw_order,
 	input::Action,
 	particle::Particle,
@@ -33,54 +33,35 @@ impl ParticleDeleter {
 }
 
 fn spawn_particle_deleter(
-	mut commands: Commands,
+	commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
 ) {
-	let action_state = action_state.single();
-	if !action_state.just_pressed(Action::SpawnDeleter) {
-		return;
-	}
-	let cursor_pos = unwrap_or_return!(windows
-		.get_primary()
-		.and_then(|window| window.cursor_position()));
-
-	commands
-		.spawn_bundle(SpriteBundle {
-			sprite: Sprite {
-				color: Color::RED,
-				..default()
-			},
-			transform: Transform {
-				translation: cursor_pos.extend(draw_order::DELETER),
-				scale: Vec3::new(15.0, 15.0, 15.0),
-				..default()
-			},
-			..default()
-		})
-		.insert(ParticleDeleter::new(100.0));
+	spawn_gizmo(
+		commands,
+		windows,
+		action_state,
+		Action::SpawnDeleter,
+		Vec2::ONE * 15.0,
+		draw_order::DELETER,
+		Color::RED,
+		ParticleDeleter::new(100.0),
+	);
 }
 
 fn despawn_particle_deleter(
-	mut commands: Commands,
+	commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
 	deleters: Query<(Entity, &Transform), With<ParticleDeleter>>,
 ) {
-	let action_state = action_state.single();
-	if !action_state.just_pressed(Action::DespawnDeleter) {
-		return;
-	}
-	let window = unwrap_or_return!(windows.get_primary());
-	let cursor_pos = unwrap_or_return!(window.cursor_position());
-
-	if let Some(deleter) = find_entity_by_cursor(
-		cursor_pos,
-		Vec2::new(window.width(), window.height()),
-		deleters.iter(),
-	) {
-		commands.entity(deleter).despawn();
-	}
+	despawn_gizmo(
+		commands,
+		windows,
+		action_state,
+		Action::DespawnDeleter,
+		&deleters,
+	);
 }
 
 fn activate_particle_deleters(

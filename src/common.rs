@@ -1,6 +1,7 @@
 use bevy::prelude::*;
+use leafwing_input_manager::prelude::ActionState;
 
-use crate::CLICK_RADIUS_SQUARED;
+use crate::{input::Action, unwrap_or_return, CLICK_RADIUS_SQUARED};
 
 pub fn wrapping_offset_2d(first: Vec2, second: Vec2, wrap: Vec2) -> Vec2 {
 	Vec2::new(
@@ -26,7 +27,7 @@ fn wrapping_offset(first: f32, second: f32, wrap: f32) -> f32 {
 pub fn find_entity_by_cursor<'a>(
 	cursor_pos: Vec2,
 	window_dimensions: Vec2,
-	entities: impl Iterator<Item = (Entity, &'a Transform)>,
+	entities: impl IntoIterator<Item = (Entity, &'a Transform)>,
 ) -> Option<Entity> {
 	entities
 		.into_iter()
@@ -46,4 +47,59 @@ pub fn find_entity_by_cursor<'a>(
 			}
 		})
 		.map(|(entity, _)| entity)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_gizmo<T: Component>(
+	mut commands: Commands,
+	windows: Res<Windows>,
+	action_state: Query<&ActionState<Action>>,
+	action: Action,
+	size: Vec2,
+	draw_order: f32,
+	color: Color,
+	gizmo: T,
+) {
+	let action_state = action_state.single();
+	if !action_state.just_pressed(action) {
+		return;
+	}
+	let cursor_pos = unwrap_or_return!(windows
+		.get_primary()
+		.and_then(|window| window.cursor_position()));
+
+	commands
+		.spawn_bundle(SpriteBundle {
+			sprite: Sprite { color, ..default() },
+			transform: Transform {
+				translation: cursor_pos.extend(draw_order),
+				scale: size.extend(1.0),
+				..default()
+			},
+			..default()
+		})
+		.insert(gizmo);
+}
+
+pub fn despawn_gizmo<'a>(
+	mut commands: Commands,
+	windows: Res<Windows>,
+	action_state: Query<&ActionState<Action>>,
+	action: Action,
+	gizmos: impl IntoIterator<Item = (Entity, &'a Transform)>,
+) {
+	let action_state = action_state.single();
+	if !action_state.just_pressed(action) {
+		return;
+	}
+	let window = unwrap_or_return!(windows.get_primary());
+	let cursor_pos = unwrap_or_return!(window.cursor_position());
+
+	if let Some(gizmo) = find_entity_by_cursor(
+		cursor_pos,
+		Vec2::new(window.width(), window.height()),
+		gizmos.into_iter(),
+	) {
+		commands.entity(gizmo).despawn();
+	}
 }
