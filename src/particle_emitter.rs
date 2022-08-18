@@ -12,8 +12,10 @@ pub struct ParticleEmitterPlugin;
 
 impl Plugin for ParticleEmitterPlugin {
 	fn build(&self, app: &mut App) {
-		app.add_system(spawn_particle_emitter)
-			.add_system(despawn_particle_emitter)
+		app.add_system(spawn_positive_particle_emitter)
+			.add_system(spawn_negative_particle_emitter)
+			.add_system(despawn_positive_particle_emitter)
+			.add_system(despawn_negative_particle_emitter)
 			.add_system(activate_particle_emitters);
 	}
 }
@@ -22,9 +24,10 @@ impl Plugin for ParticleEmitterPlugin {
 struct ParticleEmitter {
 	interval: f32,
 	time_since_emitting: f32,
+	positive: bool,
 }
 
-fn spawn_particle_emitter(
+fn spawn_positive_particle_emitter(
 	commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
@@ -33,29 +36,70 @@ fn spawn_particle_emitter(
 		commands,
 		windows,
 		action_state,
-		Action::SpawnEmitter,
+		Action::SpawnPositiveEmitter,
 		Vec2::ONE * 15.0,
 		draw_order::EMITTER,
 		Color::GREEN,
 		ParticleEmitter {
 			interval: 0.1,
 			time_since_emitting: 0.0,
+			positive: true,
 		},
 	);
 }
 
-fn despawn_particle_emitter(
+fn spawn_negative_particle_emitter(
 	commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
-	emitters: Query<(Entity, &Transform), With<ParticleEmitter>>,
+) {
+	spawn_gizmo(
+		commands,
+		windows,
+		action_state,
+		Action::SpawnNegativeEmitter,
+		Vec2::ONE * 15.0,
+		draw_order::EMITTER,
+		Color::PURPLE,
+		ParticleEmitter {
+			interval: 0.1,
+			time_since_emitting: 0.0,
+			positive: false,
+		},
+	);
+}
+
+fn despawn_positive_particle_emitter(
+	commands: Commands,
+	windows: Res<Windows>,
+	action_state: Query<&ActionState<Action>>,
+	emitters: Query<(&ParticleEmitter, Entity, &Transform)>,
 ) {
 	despawn_gizmo(
 		commands,
 		windows,
 		action_state,
-		Action::DespawnEmitter,
-		&emitters,
+		Action::DespawnPositiveEmitter,
+		emitters.iter().filter_map(|(emitter, entity, transform)| {
+			emitter.positive.then_some((entity, transform))
+		}),
+	);
+}
+
+fn despawn_negative_particle_emitter(
+	commands: Commands,
+	windows: Res<Windows>,
+	action_state: Query<&ActionState<Action>>,
+	emitters: Query<(&ParticleEmitter, Entity, &Transform)>,
+) {
+	despawn_gizmo(
+		commands,
+		windows,
+		action_state,
+		Action::DespawnNegativeEmitter,
+		emitters.iter().filter_map(|(emitter, entity, transform)| {
+			(!emitter.positive).then_some((entity, transform))
+		}),
 	);
 }
 
@@ -67,7 +111,7 @@ fn activate_particle_emitters(
 	for (mut emitter, transform) in &mut emitters {
 		let location = transform.translation.truncate();
 		if emitter.time_since_emitting > emitter.interval {
-			spawn_particle_at_location(&mut commands, location);
+			spawn_particle_at_location(&mut commands, location, emitter.positive);
 			emitter.time_since_emitting -= emitter.interval;
 		} else {
 			emitter.time_since_emitting += time.delta_seconds();

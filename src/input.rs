@@ -13,10 +13,12 @@ impl Plugin for InputPlugin {
 #[derive(Debug, Clone, Actionlike)]
 pub enum Action {
 	SpawnParticle,
-	SpawnEmitter,
+	SpawnPositiveEmitter,
+	SpawnNegativeEmitter,
 	SpawnDeleter,
 	SpawnAttractor,
-	DespawnEmitter,
+	DespawnPositiveEmitter,
+	DespawnNegativeEmitter,
 	DespawnDeleter,
 	DespawnAttractor,
 	SuspendRepulsion,
@@ -27,8 +29,9 @@ fn set_binds(mut commands: Commands) {
 	use KeyCode::*;
 
 	let actions = vec![
-		(Equals, SpawnEmitter, DespawnEmitter),
-		(Minus, SpawnDeleter, DespawnDeleter),
+		(Equals, SpawnPositiveEmitter, DespawnPositiveEmitter),
+		(Minus, SpawnNegativeEmitter, DespawnNegativeEmitter),
+		(Key1, SpawnDeleter, DespawnDeleter),
 		(Key2, SpawnAttractor, DespawnAttractor),
 	];
 

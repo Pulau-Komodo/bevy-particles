@@ -11,10 +11,11 @@ pub struct ParticlePlugin;
 impl Plugin for ParticlePlugin {
 	fn build(&self, app: &mut App) {
 		app.add_system(spawn_particle)
-			.add_system(particles_repelling_each_other)
+			.add_system(particles_interacting)
+			.add_system(despawn_cancelled_particles.after(particles_interacting))
 			.add_system(
 				clamp_particle_speed
-					.after(particles_repelling_each_other)
+					.after(particles_interacting)
 					.after(activate_particle_attractors),
 			)
 			.add_system(move_particles.after(clamp_particle_speed));
@@ -24,12 +25,21 @@ impl Plugin for ParticlePlugin {
 /// Maximum speed of a particle in units/second.
 const MAX_PARTICLE_SPEED: f32 = 200.0;
 
-#[derive(Component, Default)]
+#[derive(Component)]
 pub struct Particle {
 	movement: Vec2,
+	positive: bool,
+	cancelled: bool,
 }
 
 impl Particle {
+	pub fn new(positive: bool) -> Self {
+		Self {
+			movement: Vec2::ZERO,
+			positive,
+			cancelled: false,
+		}
+	}
 	pub fn add_movement(&mut self, movement: Vec2) {
 		self.movement += movement;
 	}
@@ -48,10 +58,10 @@ fn spawn_particle(
 		.get_primary()
 		.and_then(|window| window.cursor_position()));
 
-	spawn_particle_at_location(&mut commands, cursor_pos);
+	spawn_particle_at_location(&mut commands, cursor_pos, true);
 }
 
-fn particles_repelling_each_other(
+fn particles_interacting(
 	time: Res<Time>,
 	windows: Res<Windows>,
 	mut particles: Query<(&mut Particle, &Transform)>,
@@ -79,13 +89,31 @@ fn particles_repelling_each_other(
 			position_b,
 			Vec2::new(window.width(), window.height()),
 		);
+		let invert_force = if particle_a.positive != particle_b.positive {
+			if offset.length_squared() < 14.0 && !particle_a.cancelled && !particle_b.cancelled {
+				particle_a.cancelled = true;
+				particle_b.cancelled = true;
+			}
+			-1.0
+		} else {
+			1.0
+		};
 		let force = 10000.0
 			* offset.length_recip().min(0.2).powf(2.0)
 			* offset.normalize()
-			* time.delta_seconds();
+			* time.delta_seconds()
+			* invert_force;
 
 		particle_a.movement += force;
 		particle_b.movement -= force;
+	}
+}
+
+fn despawn_cancelled_particles(mut commands: Commands, particles: Query<(Entity, &Particle)>) {
+	for (entity, particle) in &particles {
+		if particle.cancelled {
+			commands.entity(entity).despawn();
+		}
 	}
 }
 
@@ -115,13 +143,12 @@ struct ParticleBundle {
 	particle: Particle,
 }
 
-pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2) {
+pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2, positive: bool) {
+	let color = if positive { Color::WHITE } else { Color::PINK };
+
 	commands.spawn_bundle(ParticleBundle {
 		sprite_bundle: SpriteBundle {
-			sprite: Sprite {
-				color: Color::WHITE,
-				..default()
-			},
+			sprite: Sprite { color, ..default() },
 			transform: Transform {
 				translation: position.extend(draw_order::PARTICLE),
 				scale: Vec3::new(5.0, 5.0, 1.0),
@@ -129,6 +156,6 @@ pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2) {
 			},
 			..default()
 		},
-		particle: Particle::default(),
+		particle: Particle::new(positive),
 	});
 }
