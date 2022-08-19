@@ -58,6 +58,7 @@ fn despawn_particle_deleter(
 		windows,
 		action_state,
 		Action::DespawnDeleter,
+		Action::DespawnAllDeleters,
 		&deleters,
 	);
 }

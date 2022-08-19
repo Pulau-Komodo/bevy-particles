@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use leafwing_input_manager::prelude::*;
+use leafwing_input_manager::{prelude::*, user_input::InputKind};
 
 pub struct InputPlugin;
 
@@ -21,6 +21,11 @@ pub enum Action {
 	DespawnNegativeEmitter,
 	DespawnDeleter,
 	DespawnAttractor,
+	DespawnAllParticles,
+	DespawnAllPositiveEmitters,
+	DespawnAllNegativeEmitters,
+	DespawnAllDeleters,
+	DespawnAllAttractors,
 	SuspendRepulsion,
 	ToggleInertia,
 }
@@ -30,21 +35,37 @@ fn set_binds(mut commands: Commands) {
 	use KeyCode::*;
 
 	let actions = vec![
-		(Equals, SpawnPositiveEmitter, DespawnPositiveEmitter),
-		(Minus, SpawnNegativeEmitter, DespawnNegativeEmitter),
-		(Key1, SpawnDeleter, DespawnDeleter),
-		(Key2, SpawnAttractor, DespawnAttractor),
+		(
+			Equals,
+			SpawnPositiveEmitter,
+			DespawnPositiveEmitter,
+			DespawnAllPositiveEmitters,
+		),
+		(
+			Minus,
+			SpawnNegativeEmitter,
+			DespawnNegativeEmitter,
+			DespawnAllNegativeEmitters,
+		),
+		(Key1, SpawnDeleter, DespawnDeleter, DespawnAllDeleters),
+		(Key2, SpawnAttractor, DespawnAttractor, DespawnAllAttractors),
 	];
+
+	let left_click: InputKind = MouseButton::Left.into();
 
 	let mut input_map = InputMap::default();
 	input_map.insert(MouseButton::Left, SpawnParticle);
+	input_map.insert_chord([LAlt.into(), left_click], DespawnAllParticles);
+	input_map.insert_chord([RAlt.into(), left_click], DespawnAllParticles);
 	input_map.insert(Space, SuspendRepulsion);
 	input_map.insert(I, ToggleInertia);
 
-	for (key, spawn, despawn) in actions {
+	for (key, spawn, despawn, despawn_all) in actions {
 		input_map.insert(key, spawn);
 		input_map.insert_chord([LShift, key], despawn.clone());
 		input_map.insert_chord([RShift, key], despawn);
+		input_map.insert_chord([LAlt, key], despawn_all.clone());
+		input_map.insert_chord([RAlt, key], despawn_all);
 	}
 
 	commands.spawn_bundle(InputManagerBundle::<Action> {

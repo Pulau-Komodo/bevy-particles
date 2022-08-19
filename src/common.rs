@@ -88,13 +88,21 @@ pub fn despawn_gizmo<'a>(
 	mut commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
-	action: Action,
+	action_remove_one: Action,
+	action_remove_all: Action,
 	gizmos: impl IntoIterator<Item = (Entity, &'a Transform)>,
 ) {
 	let action_state = action_state.single();
-	if !action_state.just_pressed(action) {
+
+	if action_state.just_pressed(action_remove_all) {
+		for (gizmo, _) in gizmos {
+			commands.entity(gizmo).despawn();
+		}
+		return;
+	} else if !action_state.just_pressed(action_remove_one) {
 		return;
 	}
+
 	let window = unwrap_or_return!(windows.get_primary());
 	let cursor_pos = unwrap_or_return!(window.cursor_position());
 

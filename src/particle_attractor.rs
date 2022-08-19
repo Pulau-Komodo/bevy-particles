@@ -50,6 +50,7 @@ fn despawn_particle_attractor(
 		windows,
 		action_state,
 		Action::DespawnAttractor,
+		Action::DespawnAllAttractors,
 		&attractors,
 	);
 }

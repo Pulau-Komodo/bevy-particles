@@ -16,6 +16,7 @@ impl Plugin for ParticlePlugin {
 		app.init_resource::<Inertia>()
 			.add_startup_system(spawn_initial_particles)
 			.add_system(spawn_particle)
+			.add_system(despawn_all_particles)
 			.add_system(toggle_inertia)
 			.add_system(particles_applying_forces)
 			.add_system(particles_cancelling)
@@ -88,6 +89,21 @@ fn spawn_particle(
 		.and_then(|window| window.cursor_position()));
 
 	spawn_particle_at_location(&mut commands, cursor_pos, true);
+}
+
+fn despawn_all_particles(
+	mut commands: Commands,
+	action_state: Query<&ActionState<Action>>,
+	particles: Query<Entity, With<Particle>>,
+) {
+	let action_state = action_state.single();
+	if !action_state.just_pressed(Action::DespawnAllParticles) {
+		return;
+	}
+
+	for particle in &particles {
+		commands.entity(particle).despawn();
+	}
 }
 
 fn particles_applying_forces(

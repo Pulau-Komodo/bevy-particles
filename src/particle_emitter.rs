@@ -76,6 +76,7 @@ fn despawn_positive_particle_emitter(
 		windows,
 		action_state,
 		Action::DespawnPositiveEmitter,
+		Action::DespawnAllPositiveEmitters,
 		emitters.iter().filter_map(|(emitter, entity, transform)| {
 			emitter.positive.then_some((entity, transform))
 		}),
@@ -93,6 +94,7 @@ fn despawn_negative_particle_emitter(
 		windows,
 		action_state,
 		Action::DespawnNegativeEmitter,
+		Action::DespawnAllNegativeEmitters,
 		emitters.iter().filter_map(|(emitter, entity, transform)| {
 			(!emitter.positive).then_some((entity, transform))
 		}),
