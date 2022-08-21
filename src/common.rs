@@ -1,9 +1,7 @@
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-use crate::{
-	draw_properties::DrawProperties, input::Action, unwrap_or_return, CLICK_RADIUS_SQUARED,
-};
+use crate::{draw_properties::DrawProperties, input::Action, unwrap_or_return, CLICK_RADIUS};
 
 pub fn wrapping_offset_2d(first: Vec2, second: Vec2, wrap: Vec2) -> Vec2 {
 	Vec2::new(
@@ -31,13 +29,24 @@ pub fn find_entity_by_cursor<'a>(
 	window_dimensions: Vec2,
 	entities: impl IntoIterator<Item = (Entity, &'a Transform)>,
 ) -> Option<Entity> {
-	entities
+	find_nearest_within_radius(window_dimensions, cursor_pos, CLICK_RADIUS, entities)
+}
+
+pub fn find_nearest_within_radius<'a, T>(
+	window_dimensions: Vec2,
+	position: Vec2,
+	radius: f32,
+	items: impl IntoIterator<Item = (T, &'a Transform)>,
+) -> Option<T> {
+	let radius_squared = radius.powi(2);
+
+	items
 		.into_iter()
-		.filter_map(|(entity, transform)| {
-			let position = transform.translation.truncate();
+		.filter_map(|(item, transform)| {
+			let item_position = transform.translation.truncate();
 			let distance_squared =
-				wrapping_offset_2d(cursor_pos, position, window_dimensions).length_squared();
-			(distance_squared < CLICK_RADIUS_SQUARED).then_some((entity, distance_squared))
+				wrapping_offset_2d(position, item_position, window_dimensions).length_squared();
+			(distance_squared < radius_squared).then_some((item, distance_squared))
 		})
 		.min_by(|(_, distance_a), (_, distance_b)| {
 			if distance_a < distance_b {
@@ -48,11 +57,11 @@ pub fn find_entity_by_cursor<'a>(
 				std::cmp::Ordering::Equal
 			}
 		})
-		.map(|(entity, _)| entity)
+		.map(|(item, _)| item)
 }
 
-pub fn spawn_gizmo<T: Component>(
-	mut commands: Commands,
+pub fn spawn_gizmo<T: Bundle>(
+	commands: &mut Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
 	action: Action,
@@ -81,7 +90,7 @@ pub fn spawn_gizmo<T: Component>(
 			},
 			..default()
 		})
-		.insert(gizmo);
+		.insert_bundle(gizmo);
 }
 
 pub fn despawn_gizmo<'a>(
@@ -113,4 +122,12 @@ pub fn despawn_gizmo<'a>(
 	) {
 		commands.entity(gizmo).despawn();
 	}
+}
+
+/// Generates a series of points in a circle around the midpoint.
+pub fn circular_points(midpoint: Vec2, radius: f32, count: u32) -> impl Iterator<Item = Vec2> {
+	let offset = Vec2::Y * radius;
+	(0..count).into_iter().map(move |n| {
+		midpoint + Mat2::from_angle(n as f32 * std::f32::consts::PI * 2.0 / count as f32) * offset
+	})
 }

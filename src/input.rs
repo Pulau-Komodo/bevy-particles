@@ -17,13 +17,19 @@ pub enum Action {
 	SpawnNegativeEmitter,
 	SpawnDeleter,
 	SpawnAttractor,
+	SpawnPositiveEater,
+	SpawnNegativeEater,
 	DespawnPositiveEmitter,
 	DespawnNegativeEmitter,
 	DespawnDeleter,
 	DespawnAttractor,
+	DespawnPositiveEater,
+	DespawnNegativeEater,
 	DespawnAllParticles,
 	DespawnAllPositiveEmitters,
 	DespawnAllNegativeEmitters,
+	DespawnAllPositiveEaters,
+	DespawnAllNegativeEaters,
 	DespawnAllDeleters,
 	DespawnAllAttractors,
 	SuspendRepulsion,
@@ -49,12 +55,25 @@ fn set_binds(mut commands: Commands) {
 		),
 		(Key1, SpawnDeleter, DespawnDeleter, DespawnAllDeleters),
 		(Key2, SpawnAttractor, DespawnAttractor, DespawnAllAttractors),
+		(
+			LBracket,
+			SpawnNegativeEater,
+			DespawnNegativeEater,
+			DespawnAllNegativeEaters,
+		),
+		(
+			RBracket,
+			SpawnPositiveEater,
+			DespawnPositiveEater,
+			DespawnAllPositiveEaters,
+		),
 	];
 
 	let left_click: InputKind = MouseButton::Left.into();
 
 	let mut input_map = InputMap::default();
-	input_map.insert(MouseButton::Left, SpawnParticle);
+	input_map.insert(left_click, SpawnParticle);
+	input_map.insert(left_click, SpawnParticle);
 	input_map.insert_chord([LAlt.into(), left_click], DespawnAllParticles);
 	input_map.insert_chord([RAlt.into(), left_click], DespawnAllParticles);
 	input_map.insert(Space, SuspendRepulsion);

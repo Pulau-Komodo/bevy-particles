@@ -2,10 +2,10 @@ use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-	common::wrapping_offset_2d,
+	common::{circular_points, wrapping_offset_2d},
 	draw_properties::{self, DrawProperties},
 	input::Action,
-	particle_attractor::activate_particle_attractors,
+	movement::Movement,
 	unwrap_or_return,
 };
 
@@ -13,44 +13,25 @@ pub struct ParticlePlugin;
 
 impl Plugin for ParticlePlugin {
 	fn build(&self, app: &mut App) {
-		app.init_resource::<Inertia>()
-			.add_startup_system(spawn_initial_particles)
+		app.add_startup_system(spawn_initial_particles)
 			.add_system(spawn_particle)
 			.add_system(despawn_all_particles)
-			.add_system(toggle_inertia)
 			.add_system(particles_applying_forces)
 			.add_system(particles_cancelling)
-			.add_system(despawn_cancelled_particles.after(particles_cancelling))
-			.add_system(
-				clamp_particle_speed
-					.after(particles_applying_forces)
-					.after(activate_particle_attractors),
-			)
-			.add_system(move_particles.after(clamp_particle_speed));
+			.add_system(despawn_cancelled_particles.after(particles_cancelling));
 	}
 }
 
 /// The theoretical amount of force applied at 1 pixel distance.
-const BASE_FORCE: f32 = 10000.0;
+const BASE_FORCE: f32 = 10_000.0;
 /// The force will be applied as if it always has at least this distance.
 const PROXIMITY_FORCE_CAP: f32 = 5.0;
 /// The power to which the distance is raised to diminish force. A higher number means force more quickly diminishes with distance.
 const DIMINISHING_POWER: f32 = 2.0;
-/// Maximum speed of a particle in units/second.
-const MAX_PARTICLE_SPEED: f32 = 200.0;
 /// The distance within which opposing-charge particles will cancel out.
 const PARTICLE_CANCEL_DISTANCE: f32 = 4.0;
 /// How many particles to spawn when the application first launches.
 const INITIAL_PARTICLE_COUNT: u32 = 1000;
-
-#[derive(Default)]
-struct Inertia(bool);
-
-fn toggle_inertia(mut inertia: ResMut<Inertia>, action_state: Query<&ActionState<Action>>) {
-	if action_state.single().just_pressed(Action::ToggleInertia) {
-		inertia.0 = !inertia.0;
-	}
-}
 
 #[derive(Default, Component)]
 pub struct Particle {
@@ -61,19 +42,13 @@ impl Particle {
 	pub fn new(positive: bool) -> Self {
 		Self { positive }
 	}
-}
-
-#[derive(Default, Component)]
-pub struct Movement(Vec2);
-
-impl Movement {
-	pub fn add(&mut self, movement: Vec2) {
-		self.0 += movement;
+	pub fn is_positive(&self) -> bool {
+		self.positive
 	}
 }
 
 #[derive(Default, Component)]
-pub struct Cancelled(bool);
+pub struct Cancelled(pub bool);
 
 fn spawn_particle(
 	mut commands: Commands,
@@ -106,7 +81,7 @@ fn despawn_all_particles(
 	}
 }
 
-fn particles_applying_forces(
+pub fn particles_applying_forces(
 	time: Res<Time>,
 	windows: Res<Windows>,
 	mut particles: Query<(&mut Movement, &Particle, &Transform)>,
@@ -149,8 +124,8 @@ fn particles_applying_forces(
 			* time.delta_seconds()
 			* invert_force;
 
-		movement_a.0 += force;
-		movement_b.0 -= force;
+		movement_a.add(force);
+		movement_b.add(-force);
 	}
 }
 
@@ -196,54 +171,18 @@ fn despawn_cancelled_particles(mut commands: Commands, particles: Query<(Entity,
 	}
 }
 
-fn clamp_particle_speed(
-	time: Res<Time>,
-	inertia: Res<Inertia>,
-	mut particles: Query<&mut Movement, With<Particle>>,
-) {
-	if !inertia.0 {
-		for mut particle in &mut particles {
-			particle.0 = particle
-				.0
-				.clamp_length_max(MAX_PARTICLE_SPEED * time.delta_seconds());
-		}
-	}
-}
-
-fn move_particles(
-	time: Res<Time>,
-	windows: Res<Windows>,
-	inertia: Res<Inertia>,
-	mut particles: Query<(&mut Transform, &mut Movement), With<Particle>>,
-) {
-	let window = unwrap_or_return!(windows.get_primary());
-
-	for (mut transform, mut movement) in &mut particles {
-		let movement_to_apply = if inertia.0 {
-			movement.0 * time.delta_seconds() * 0.5
-		} else {
-			movement.0
-		};
-		transform.translation += movement_to_apply.extend(0.0);
-		transform.translation.x = transform.translation.x.rem_euclid(window.width());
-		transform.translation.y = transform.translation.y.rem_euclid(window.height());
-		if !inertia.0 {
-			movement.0 = Vec2::ZERO;
-		}
-	}
-}
-
 fn spawn_initial_particles(mut commands: Commands, windows: Res<Windows>) {
 	let window = unwrap_or_return!(windows.get_primary());
+
 	let middle = Vec2::new(window.width(), window.height()) / 2.0;
 	let smallest_dimension = f32::min(window.width(), window.height());
-	let offset = Vec2::Y * smallest_dimension * 0.9 / 2.0;
-	for n in 0..INITIAL_PARTICLE_COUNT {
-		let position = middle
-			+ Mat2::from_angle(
-				n as f32 * std::f32::consts::PI * 2.0 / INITIAL_PARTICLE_COUNT as f32,
-			) * offset;
-		spawn_particle_at_location(&mut commands, position, true);
+
+	for point in circular_points(
+		middle,
+		smallest_dimension * 0.9 / 2.0,
+		INITIAL_PARTICLE_COUNT,
+	) {
+		spawn_particle_at_location(&mut commands, point, true);
 	}
 }
 

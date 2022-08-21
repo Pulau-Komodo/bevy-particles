@@ -42,3 +42,15 @@ pub const ATTRACTOR: DrawProperties = DrawProperties {
 	size: 15.0,
 	color: Color::PURPLE,
 };
+
+pub const POSITIVE_EATER: DrawProperties = DrawProperties {
+	draw_priority: 4.0,
+	size: 10.0,
+	color: Color::rgb(1.0, 0.75, 0.75),
+};
+
+pub const NEGATIVE_EATER: DrawProperties = DrawProperties {
+	draw_priority: 4.0,
+	size: 10.0,
+	color: Color::rgb(0.75, 0.75, 1.0),
+};

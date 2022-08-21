@@ -5,7 +5,8 @@ use crate::{
 	common::{despawn_gizmo, spawn_gizmo, wrapping_offset_2d},
 	draw_properties,
 	input::Action,
-	particle::{Movement, Particle},
+	movement::Movement,
+	particle::Particle,
 	unwrap_or_return,
 };
 
@@ -25,17 +26,17 @@ pub struct ParticleAttractor {
 }
 
 fn spawn_particle_attractor(
-	commands: Commands,
+	mut commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
 ) {
 	spawn_gizmo(
-		commands,
+		&mut commands,
 		windows,
 		action_state,
 		Action::SpawnAttractor,
 		draw_properties::ATTRACTOR,
-		ParticleAttractor { force: 10000.0 },
+		(ParticleAttractor { force: 10000.0 },),
 	);
 }
 

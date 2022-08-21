@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 use gui::GuiPlugin;
 use input::InputPlugin;
+use movement::MovementPlugin;
 use particle::ParticlePlugin;
 use particle_attractor::ParticleAttractorPlugin;
 use particle_deleter::ParticleDeleterPlugin;
+use particle_eater::ParticleEaterPlugin;
 use particle_emitter::ParticleEmitterPlugin;
 
 mod common;
@@ -11,9 +13,11 @@ mod draw_properties;
 mod gui;
 mod input;
 mod macros;
+mod movement;
 mod particle;
 mod particle_attractor;
 mod particle_deleter;
+mod particle_eater;
 mod particle_emitter;
 
 pub const CLICK_RADIUS: f32 = 15.0;
@@ -30,10 +34,12 @@ fn main() {
 		})
 		.add_plugins(DefaultPlugins)
 		.add_plugin(InputPlugin)
+		.add_plugin(MovementPlugin)
 		.add_plugin(ParticlePlugin)
 		.add_plugin(ParticleEmitterPlugin)
 		.add_plugin(ParticleDeleterPlugin)
 		.add_plugin(ParticleAttractorPlugin)
+		.add_plugin(ParticleEaterPlugin)
 		.add_plugin(GuiPlugin)
 		.add_startup_system(spawn_camera)
 		.run();

@@ -33,17 +33,17 @@ impl ParticleDeleter {
 }
 
 fn spawn_particle_deleter(
-	commands: Commands,
+	mut commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
 ) {
 	spawn_gizmo(
-		commands,
+		&mut commands,
 		windows,
 		action_state,
 		Action::SpawnDeleter,
 		draw_properties::DELETER,
-		ParticleDeleter::new(100.0),
+		(ParticleDeleter::new(100.0),),
 	);
 }
 

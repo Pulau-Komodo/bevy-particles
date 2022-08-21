@@ -28,40 +28,40 @@ struct ParticleEmitter {
 }
 
 fn spawn_positive_particle_emitter(
-	commands: Commands,
+	mut commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
 ) {
 	spawn_gizmo(
-		commands,
+		&mut commands,
 		windows,
 		action_state,
 		Action::SpawnPositiveEmitter,
 		draw_properties::POSITIVE_EMITTER,
-		ParticleEmitter {
+		(ParticleEmitter {
 			interval: 0.1,
 			time_since_emitting: 0.0,
 			positive: true,
-		},
+		},),
 	);
 }
 
 fn spawn_negative_particle_emitter(
-	commands: Commands,
+	mut commands: Commands,
 	windows: Res<Windows>,
 	action_state: Query<&ActionState<Action>>,
 ) {
 	spawn_gizmo(
-		commands,
+		&mut commands,
 		windows,
 		action_state,
 		Action::SpawnNegativeEmitter,
 		draw_properties::NEGATIVE_EMITTER,
-		ParticleEmitter {
+		(ParticleEmitter {
 			interval: 0.1,
 			time_since_emitting: 0.0,
 			positive: false,
-		},
+		},),
 	);
 }
 
