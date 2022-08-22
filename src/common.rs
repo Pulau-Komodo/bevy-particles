@@ -69,3 +69,22 @@ pub fn circular_points(midpoint: Vec2, radius: f32, count: u32) -> impl Iterator
 
 #[derive(Component)]
 pub struct Positive;
+
+pub fn calculate_force(
+	base_force: f32,
+	proximity_cap: f32,
+	exponent: f32,
+	position_a: Vec2,
+	position_b: Vec2,
+	wrap: Vec2,
+) -> Option<Vec2> {
+	if position_a == position_b {
+		return None;
+	}
+
+	let offset = wrapping_offset_2d(position_a, position_b, wrap);
+
+	let force = base_force / offset.length().max(proximity_cap).powf(exponent) * offset.normalize();
+
+	Some(force)
+}

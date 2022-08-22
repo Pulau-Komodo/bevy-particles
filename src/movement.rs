@@ -11,7 +11,8 @@ impl Plugin for MovementPlugin {
 	fn build(&self, app: &mut App) {
 		app.init_resource::<Inertia>()
 			.add_system(toggle_inertia)
-			.add_system(clamp_speed)
+			.add_system(merge_speed)
+			.add_system(clamp_speed.after(merge_speed))
 			.add_system(apply_movement.after(clamp_speed));
 	}
 }
@@ -23,6 +24,15 @@ const MAX_SPEED: f32 = 200.0;
 pub struct Movement(Vec2);
 
 impl Movement {
+	pub fn add(&mut self, movement: Vec2) {
+		self.0 += movement;
+	}
+}
+
+#[derive(Default, Component)]
+pub struct MovementBatch2(Vec2);
+
+impl MovementBatch2 {
 	pub fn add(&mut self, movement: Vec2) {
 		self.0 += movement;
 	}
@@ -60,10 +70,17 @@ pub fn toggle_inertia(mut inertia: ResMut<Inertia>, action_state: Query<&ActionS
 	}
 }
 
-pub fn clamp_speed(time: Res<Time>, inertia: Res<Inertia>, mut particles: Query<&mut Movement>) {
+pub fn merge_speed(mut movers: Query<(&mut Movement, &mut MovementBatch2)>) {
+	for (mut movement, mut movement_2) in &mut movers {
+		movement.0 += movement_2.0;
+		movement_2.0 = Vec2::ZERO;
+	}
+}
+
+pub fn clamp_speed(time: Res<Time>, inertia: Res<Inertia>, mut movers: Query<&mut Movement>) {
 	if !inertia.0 {
-		for mut particle in &mut particles {
-			particle.0 = particle
+		for mut movement in &mut movers {
+			movement.0 = movement
 				.0
 				.clamp_length_max(MAX_SPEED * time.delta_seconds());
 		}

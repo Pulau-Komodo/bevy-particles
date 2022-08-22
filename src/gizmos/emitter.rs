@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::{common::Positive, particle::spawn_particle_at_location};
+use crate::{
+	common::Positive,
+	particle::{spawn_particle_at_location, NextBatch},
+};
 
 #[derive(Component)]
 pub struct Emitter {
@@ -26,12 +29,18 @@ impl Default for Emitter {
 pub fn activate_emitters(
 	mut commands: Commands,
 	time: Res<Time>,
+	mut next_batch: ResMut<NextBatch>,
 	mut emitters: Query<(&mut Emitter, Option<&Positive>, &Transform)>,
 ) {
 	for (mut emitter, positive, transform) in &mut emitters {
 		let location = transform.translation.truncate();
 		if emitter.time_since_emitting > emitter.interval {
-			spawn_particle_at_location(&mut commands, location, positive.is_some());
+			spawn_particle_at_location(
+				&mut commands,
+				&mut next_batch,
+				location,
+				positive.is_some(),
+			);
 			emitter.time_since_emitting -= emitter.interval;
 		} else {
 			emitter.time_since_emitting += time.delta_seconds();

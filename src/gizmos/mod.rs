@@ -5,7 +5,7 @@ use crate::{
 	common::{find_entity_by_cursor, Positive},
 	draw_properties::{self, DrawProperties},
 	input::Action,
-	movement::{clamp_speed, Movement},
+	movement::{merge_speed, Movement},
 	unwrap_or_return,
 };
 
@@ -27,11 +27,11 @@ pub struct GizmoPlugin;
 
 impl Plugin for GizmoPlugin {
 	fn build(&self, app: &mut App) {
-		app.add_system(activate_attractors.before(clamp_speed))
+		app.add_system(activate_attractors.before(merge_speed))
 			.add_system(activate_deleters)
 			.add_system(activate_emitters)
 			.add_system(activate_eaters)
-			.add_system(eaters_chasing_particles.before(clamp_speed))
+			.add_system(eaters_chasing_particles.before(merge_speed))
 			.add_system(apply_eater_scale)
 			.add_system(process_dormant_eaters)
 			.add_system(spawn_or_despawn_gizmos);

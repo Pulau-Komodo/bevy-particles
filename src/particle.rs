@@ -2,10 +2,10 @@ use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-	common::{circular_points, wrapping_offset_2d, Positive},
+	common::{calculate_force, circular_points, wrapping_offset_2d, Positive},
 	draw_properties::{self, DrawProperties},
 	input::Action,
-	movement::{clamp_speed, Movement},
+	movement::{merge_speed, Movement, MovementBatch2},
 	unwrap_or_return,
 };
 
@@ -13,10 +13,12 @@ pub struct ParticlePlugin;
 
 impl Plugin for ParticlePlugin {
 	fn build(&self, app: &mut App) {
-		app.add_startup_system(spawn_initial_particles)
+		app.init_resource::<NextBatch>()
+			.add_startup_system(spawn_initial_particles)
 			.add_system(spawn_particle)
 			.add_system(despawn_all_particles)
-			.add_system(particles_applying_forces.before(clamp_speed))
+			.add_system(particles_applying_forces.before(merge_speed))
+			.add_system(particles_applying_forces_batch_2.before(merge_speed))
 			.add_system(particles_cancelling)
 			.add_system(despawn_cancelled_particles.after(particles_cancelling));
 	}
@@ -48,6 +50,7 @@ pub struct Cancelled(pub bool);
 fn spawn_particle(
 	mut commands: Commands,
 	windows: Res<Windows>,
+	mut next_batch: ResMut<NextBatch>,
 	action_state: Query<&ActionState<Action>>,
 ) {
 	let action_state = action_state.single();
@@ -60,7 +63,7 @@ fn spawn_particle(
 		.get_primary()
 		.and_then(|window| window.cursor_position()));
 
-	spawn_particle_at_location(&mut commands, cursor_pos, true);
+	spawn_particle_at_location(&mut commands, &mut next_batch, cursor_pos, true);
 }
 
 fn despawn_all_particles(
@@ -80,84 +83,145 @@ fn despawn_all_particles(
 	}
 }
 
-pub fn particles_applying_forces(
+fn particles_applying_forces(
 	time: Res<Time>,
 	windows: Res<Windows>,
-	mut particles: Query<(&mut Movement, Option<&Positive>, &Transform), With<Particle>>,
-	action_state: Query<&ActionState<Action>>,
+	mut particles: Query<
+		(&mut Movement, Option<&Positive>, &Transform),
+		(With<Particle>, Without<BatchTwo>),
+	>,
+	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, With<BatchTwo>)>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
-	let action_state = action_state.single();
-
-	if action_state.pressed(Action::SuspendRepulsion) {
-		return;
-	}
 
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some(
 		[(mut movement_a, positive_a, transform_a), (mut movement_b, positive_b, transform_b)],
 	) = combinations.fetch_next()
 	{
-		let position_a = transform_a.translation.truncate();
-		let position_b = transform_b.translation.truncate();
-		if position_a == position_b {
-			continue;
-		}
-
-		let offset = wrapping_offset_2d(
-			position_a,
-			position_b,
+		if let Some(force) = calculate_force(
+			BASE_FORCE,
+			PROXIMITY_FORCE_CAP,
+			DIMINISHING_POWER,
+			transform_a.translation.truncate(),
+			transform_b.translation.truncate(),
 			Vec2::new(window.width(), window.height()),
-		);
-		let invert_force = if positive_a.is_some() != positive_b.is_some() {
-			-1.0
-		} else {
-			1.0
-		};
-		let force = BASE_FORCE
-			/ offset
-				.length()
-				.max(PROXIMITY_FORCE_CAP)
-				.powf(DIMINISHING_POWER)
-			* offset.normalize()
-			* time.delta_seconds()
-			* invert_force;
+		) {
+			let invert_force = if positive_a.is_some() != positive_b.is_some() {
+				-1.0
+			} else {
+				1.0
+			};
+			let force = force * time.delta_seconds() * invert_force;
 
-		movement_a.add(force);
-		movement_b.add(-force);
+			movement_a.add(force);
+			movement_b.add(-force);
+		}
+	}
+	for (mut movement, positive_a, transform_a) in &mut particles.iter_mut() {
+		for (positive_b, transform_b) in &other_particles {
+			if let Some(force) = calculate_force(
+				BASE_FORCE,
+				PROXIMITY_FORCE_CAP,
+				DIMINISHING_POWER,
+				transform_a.translation.truncate(),
+				transform_b.translation.truncate(),
+				Vec2::new(window.width(), window.height()),
+			) {
+				let invert_force = if positive_a.is_some() != positive_b.is_some() {
+					-1.0
+				} else {
+					1.0
+				};
+				let force = force * time.delta_seconds() * invert_force;
+
+				movement.add(force);
+			}
+		}
 	}
 }
 
-fn particles_cancelling(
+fn particles_applying_forces_batch_2(
+	time: Res<Time>,
 	windows: Res<Windows>,
-	mut particles: Query<(&mut Cancelled, Option<&Positive>, &Transform), With<Particle>>,
+	mut particles: Query<
+		(&mut MovementBatch2, Option<&Positive>, &Transform),
+		(With<Particle>, With<BatchTwo>),
+	>,
+	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, Without<BatchTwo>)>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
 
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some(
-		[(mut cancelled_a, positive_a, transform_a), (mut cancelled_b, positive_b, transform_b)],
+		[(mut movement_a, positive_a, transform_a), (mut movement_b, positive_b, transform_b)],
 	) = combinations.fetch_next()
 	{
-		let position_a = transform_a.translation.truncate();
-		let position_b = transform_b.translation.truncate();
-		if position_a == position_b {
-			continue;
-		}
-
-		let offset = wrapping_offset_2d(
-			position_a,
-			position_b,
+		if let Some(force) = calculate_force(
+			BASE_FORCE,
+			PROXIMITY_FORCE_CAP,
+			DIMINISHING_POWER,
+			transform_a.translation.truncate(),
+			transform_b.translation.truncate(),
 			Vec2::new(window.width(), window.height()),
-		);
+		) {
+			let invert_force = if positive_a.is_some() != positive_b.is_some() {
+				-1.0
+			} else {
+				1.0
+			};
+			let force = force * time.delta_seconds() * invert_force;
 
-		if offset.length_squared() < PARTICLE_CANCEL_DISTANCE.powi(2)
-			&& positive_a.is_some() != positive_b.is_some()
-			&& !cancelled_a.0
-			&& !cancelled_b.0
-		{
-			cancelled_a.0 = true;
-			cancelled_b.0 = true;
+			movement_a.add(force);
+			movement_b.add(-force);
+		}
+	}
+	for (mut movement, positive_a, transform_a) in &mut particles.iter_mut() {
+		for (positive_b, transform_b) in &other_particles {
+			if let Some(force) = calculate_force(
+				BASE_FORCE,
+				PROXIMITY_FORCE_CAP,
+				DIMINISHING_POWER,
+				transform_a.translation.truncate(),
+				transform_b.translation.truncate(),
+				Vec2::new(window.width(), window.height()),
+			) {
+				let invert_force = if positive_a.is_some() != positive_b.is_some() {
+					-1.0
+				} else {
+					1.0
+				};
+				let force = force * time.delta_seconds() * invert_force;
+
+				movement.add(force);
+			}
+		}
+	}
+}
+
+fn particles_cancelling(
+	windows: Res<Windows>,
+	mut positive_particles: Query<(&mut Cancelled, &Transform), (With<Particle>, With<Positive>)>,
+	mut negative_particles: Query<
+		(&mut Cancelled, &Transform),
+		(With<Particle>, Without<Positive>),
+	>,
+) {
+	let window = unwrap_or_return!(windows.get_primary());
+
+	for (mut cancelled_pos, transform_pos) in &mut positive_particles {
+		for (mut cancelled_neg, transform_neg) in &mut negative_particles {
+			if !cancelled_pos.0 && !cancelled_neg.0 {
+				let offset = wrapping_offset_2d(
+					transform_pos.translation.truncate(),
+					transform_neg.translation.truncate(),
+					Vec2::new(window.width(), window.height()),
+				);
+				if offset.length_squared() < PARTICLE_CANCEL_DISTANCE.powi(2) {
+					cancelled_pos.0 = true;
+					cancelled_neg.0 = true;
+				}
+			}
 		}
 	}
 }
@@ -170,7 +234,11 @@ fn despawn_cancelled_particles(mut commands: Commands, particles: Query<(Entity,
 	}
 }
 
-fn spawn_initial_particles(mut commands: Commands, windows: Res<Windows>) {
+fn spawn_initial_particles(
+	mut commands: Commands,
+	mut next_batch: ResMut<NextBatch>,
+	windows: Res<Windows>,
+) {
 	let window = unwrap_or_return!(windows.get_primary());
 
 	let middle = Vec2::new(window.width(), window.height()) / 2.0;
@@ -181,7 +249,7 @@ fn spawn_initial_particles(mut commands: Commands, windows: Res<Windows>) {
 		smallest_dimension * 0.9 / 2.0,
 		INITIAL_PARTICLE_COUNT,
 	) {
-		spawn_particle_at_location(&mut commands, point, true);
+		spawn_particle_at_location(&mut commands, &mut next_batch, point, true);
 	}
 }
 
@@ -194,7 +262,12 @@ struct ParticleBundle {
 	cancelled: Cancelled,
 }
 
-pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2, positive: bool) {
+pub fn spawn_particle_at_location(
+	commands: &mut Commands,
+	next_batch: &mut ResMut<NextBatch>,
+	position: Vec2,
+	positive: bool,
+) {
 	let draw_properties = if positive {
 		draw_properties::POSITIVE_PARTICLE
 	} else {
@@ -222,4 +295,17 @@ pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2, posit
 	if positive {
 		entity_commands.insert(Positive);
 	}
+	if next_batch.0 == 1 {
+		entity_commands.insert(BatchTwo);
+		entity_commands.insert(MovementBatch2::default());
+		next_batch.0 = 0;
+	} else {
+		next_batch.0 += 1;
+	}
 }
+
+#[derive(Component)]
+pub struct BatchTwo;
+
+#[derive(Default)]
+pub struct NextBatch(u8);
