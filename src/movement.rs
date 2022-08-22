@@ -1,10 +1,6 @@
 use bevy::prelude::*;
 
-use crate::particle::particles_applying_forces;
-
 use crate::input::Action;
-use crate::particle_attractor::activate_particle_attractors;
-use crate::particle_eater::eaters_chasing_particles;
 use crate::unwrap_or_return;
 
 use leafwing_input_manager::prelude::ActionState;
@@ -15,12 +11,7 @@ impl Plugin for MovementPlugin {
 	fn build(&self, app: &mut App) {
 		app.init_resource::<Inertia>()
 			.add_system(toggle_inertia)
-			.add_system(
-				clamp_speed
-					.after(particles_applying_forces)
-					.after(activate_particle_attractors)
-					.after(eaters_chasing_particles),
-			)
+			.add_system(clamp_speed)
 			.add_system(apply_movement.after(clamp_speed));
 	}
 }
@@ -41,11 +32,11 @@ pub fn apply_movement(
 	time: Res<Time>,
 	windows: Res<Windows>,
 	inertia: Res<Inertia>,
-	mut particles: Query<(&mut Transform, &mut Movement)>,
+	mut movers: Query<(&mut Transform, &mut Movement)>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
 
-	for (mut transform, mut movement) in &mut particles {
+	for (mut transform, mut movement) in &mut movers {
 		let movement_to_apply = if inertia.0 {
 			movement.0 * time.delta_seconds() * 0.5
 		} else {
@@ -63,20 +54,13 @@ pub fn apply_movement(
 #[derive(Default)]
 pub struct Inertia(bool);
 
-pub fn toggle_inertia(
-	mut inertia: ResMut<Inertia>,
-	action_state: Query<&ActionState<Action>>,
-) {
+pub fn toggle_inertia(mut inertia: ResMut<Inertia>, action_state: Query<&ActionState<Action>>) {
 	if action_state.single().just_pressed(Action::ToggleInertia) {
 		inertia.0 = !inertia.0;
 	}
 }
 
-pub fn clamp_speed(
-	time: Res<Time>,
-	inertia: Res<Inertia>,
-	mut particles: Query<&mut Movement>,
-) {
+pub fn clamp_speed(time: Res<Time>, inertia: Res<Inertia>, mut particles: Query<&mut Movement>) {
 	if !inertia.0 {
 		for mut particle in &mut particles {
 			particle.0 = particle

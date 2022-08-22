@@ -1,0 +1,2 @@
+# Over this threshold, Clippy suggests using a type alias. But Query parameters will quickly rack up complexity score, and aliases are usually not appropriate. Default is 250.
+type-complexity-threshold = 500

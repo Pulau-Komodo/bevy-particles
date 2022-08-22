@@ -1,7 +1,6 @@
 use bevy::prelude::*;
-use leafwing_input_manager::prelude::ActionState;
 
-use crate::{draw_properties::DrawProperties, input::Action, unwrap_or_return, CLICK_RADIUS};
+use crate::CLICK_RADIUS;
 
 pub fn wrapping_offset_2d(first: Vec2, second: Vec2, wrap: Vec2) -> Vec2 {
 	Vec2::new(
@@ -60,70 +59,6 @@ pub fn find_nearest_within_radius<'a, T>(
 		.map(|(item, _)| item)
 }
 
-pub fn spawn_gizmo<T: Bundle>(
-	commands: &mut Commands,
-	windows: Res<Windows>,
-	action_state: Query<&ActionState<Action>>,
-	action: Action,
-	DrawProperties {
-		draw_priority,
-		size,
-		color,
-	}: DrawProperties,
-	gizmo: T,
-) {
-	let action_state = action_state.single();
-	if !action_state.just_pressed(action) {
-		return;
-	}
-	let cursor_pos = unwrap_or_return!(windows
-		.get_primary()
-		.and_then(|window| window.cursor_position()));
-
-	commands
-		.spawn_bundle(SpriteBundle {
-			sprite: Sprite { color, ..default() },
-			transform: Transform {
-				translation: cursor_pos.extend(draw_priority),
-				scale: (Vec2::ONE * size).extend(1.0),
-				..default()
-			},
-			..default()
-		})
-		.insert_bundle(gizmo);
-}
-
-pub fn despawn_gizmo<'a>(
-	mut commands: Commands,
-	windows: Res<Windows>,
-	action_state: Query<&ActionState<Action>>,
-	action_remove_one: Action,
-	action_remove_all: Action,
-	gizmos: impl IntoIterator<Item = (Entity, &'a Transform)>,
-) {
-	let action_state = action_state.single();
-
-	if action_state.just_pressed(action_remove_all) {
-		for (gizmo, _) in gizmos {
-			commands.entity(gizmo).despawn();
-		}
-		return;
-	} else if !action_state.just_pressed(action_remove_one) {
-		return;
-	}
-
-	let window = unwrap_or_return!(windows.get_primary());
-	let cursor_pos = unwrap_or_return!(window.cursor_position());
-
-	if let Some(gizmo) = find_entity_by_cursor(
-		cursor_pos,
-		Vec2::new(window.width(), window.height()),
-		gizmos.into_iter(),
-	) {
-		commands.entity(gizmo).despawn();
-	}
-}
-
 /// Generates a series of points in a circle around the midpoint.
 pub fn circular_points(midpoint: Vec2, radius: f32, count: u32) -> impl Iterator<Item = Vec2> {
 	let offset = Vec2::Y * radius;
@@ -131,3 +66,6 @@ pub fn circular_points(midpoint: Vec2, radius: f32, count: u32) -> impl Iterator
 		midpoint + Mat2::from_angle(n as f32 * std::f32::consts::PI * 2.0 / count as f32) * offset
 	})
 }
+
+#[derive(Component)]
+pub struct Positive;

@@ -2,10 +2,10 @@ use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-	common::{circular_points, wrapping_offset_2d},
+	common::{circular_points, wrapping_offset_2d, Positive},
 	draw_properties::{self, DrawProperties},
 	input::Action,
-	movement::Movement,
+	movement::{clamp_speed, Movement},
 	unwrap_or_return,
 };
 
@@ -16,7 +16,7 @@ impl Plugin for ParticlePlugin {
 		app.add_startup_system(spawn_initial_particles)
 			.add_system(spawn_particle)
 			.add_system(despawn_all_particles)
-			.add_system(particles_applying_forces)
+			.add_system(particles_applying_forces.before(clamp_speed))
 			.add_system(particles_cancelling)
 			.add_system(despawn_cancelled_particles.after(particles_cancelling));
 	}
@@ -34,16 +34,11 @@ const PARTICLE_CANCEL_DISTANCE: f32 = 4.0;
 const INITIAL_PARTICLE_COUNT: u32 = 1000;
 
 #[derive(Default, Component)]
-pub struct Particle {
-	positive: bool,
-}
+pub struct Particle;
 
 impl Particle {
-	pub fn new(positive: bool) -> Self {
-		Self { positive }
-	}
-	pub fn is_positive(&self) -> bool {
-		self.positive
+	pub fn new() -> Self {
+		Self
 	}
 }
 
@@ -56,7 +51,9 @@ fn spawn_particle(
 	action_state: Query<&ActionState<Action>>,
 ) {
 	let action_state = action_state.single();
-	if !action_state.just_pressed(Action::SpawnParticle) {
+	if !action_state.just_pressed(Action::SpawnParticle)
+		|| action_state.pressed(Action::DespawnModifier)
+	{
 		return;
 	}
 	let cursor_pos = unwrap_or_return!(windows
@@ -72,7 +69,9 @@ fn despawn_all_particles(
 	particles: Query<Entity, With<Particle>>,
 ) {
 	let action_state = action_state.single();
-	if !action_state.just_pressed(Action::DespawnAllParticles) {
+	if !action_state.just_pressed(Action::SpawnParticle)
+		|| !action_state.pressed(Action::DespawnModifier)
+	{
 		return;
 	}
 
@@ -84,7 +83,7 @@ fn despawn_all_particles(
 pub fn particles_applying_forces(
 	time: Res<Time>,
 	windows: Res<Windows>,
-	mut particles: Query<(&mut Movement, &Particle, &Transform)>,
+	mut particles: Query<(&mut Movement, Option<&Positive>, &Transform), With<Particle>>,
 	action_state: Query<&ActionState<Action>>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
@@ -96,7 +95,7 @@ pub fn particles_applying_forces(
 
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some(
-		[(mut movement_a, particle_a, transform_a), (mut movement_b, particle_b, transform_b)],
+		[(mut movement_a, positive_a, transform_a), (mut movement_b, positive_b, transform_b)],
 	) = combinations.fetch_next()
 	{
 		let position_a = transform_a.translation.truncate();
@@ -110,7 +109,7 @@ pub fn particles_applying_forces(
 			position_b,
 			Vec2::new(window.width(), window.height()),
 		);
-		let invert_force = if particle_a.positive != particle_b.positive {
+		let invert_force = if positive_a.is_some() != positive_b.is_some() {
 			-1.0
 		} else {
 			1.0
@@ -131,13 +130,13 @@ pub fn particles_applying_forces(
 
 fn particles_cancelling(
 	windows: Res<Windows>,
-	mut particles: Query<(&mut Cancelled, &Particle, &Transform)>,
+	mut particles: Query<(&mut Cancelled, Option<&Positive>, &Transform), With<Particle>>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
 
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some(
-		[(mut cancelled_a, particle_a, transform_a), (mut cancelled_b, particle_b, transform_b)],
+		[(mut cancelled_a, positive_a, transform_a), (mut cancelled_b, positive_b, transform_b)],
 	) = combinations.fetch_next()
 	{
 		let position_a = transform_a.translation.truncate();
@@ -153,7 +152,7 @@ fn particles_cancelling(
 		);
 
 		if offset.length_squared() < PARTICLE_CANCEL_DISTANCE.powi(2)
-			&& particle_a.positive != particle_b.positive
+			&& positive_a.is_some() != positive_b.is_some()
 			&& !cancelled_a.0
 			&& !cancelled_b.0
 		{
@@ -207,7 +206,7 @@ pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2, posit
 		color,
 	} = draw_properties;
 
-	commands.spawn_bundle(ParticleBundle {
+	let mut entity_commands = commands.spawn_bundle(ParticleBundle {
 		sprite_bundle: SpriteBundle {
 			sprite: Sprite { color, ..default() },
 			transform: Transform {
@@ -217,7 +216,10 @@ pub fn spawn_particle_at_location(commands: &mut Commands, position: Vec2, posit
 			},
 			..default()
 		},
-		particle: Particle::new(positive),
+		particle: Particle::new(),
 		..default()
 	});
+	if positive {
+		entity_commands.insert(Positive);
+	}
 }

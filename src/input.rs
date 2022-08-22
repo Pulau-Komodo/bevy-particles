@@ -13,25 +13,14 @@ impl Plugin for InputPlugin {
 #[derive(Debug, Clone, Actionlike)]
 pub enum Action {
 	SpawnParticle,
-	SpawnPositiveEmitter,
-	SpawnNegativeEmitter,
-	SpawnDeleter,
-	SpawnAttractor,
-	SpawnPositiveEater,
-	SpawnNegativeEater,
-	DespawnPositiveEmitter,
-	DespawnNegativeEmitter,
-	DespawnDeleter,
-	DespawnAttractor,
-	DespawnPositiveEater,
-	DespawnNegativeEater,
-	DespawnAllParticles,
-	DespawnAllPositiveEmitters,
-	DespawnAllNegativeEmitters,
-	DespawnAllPositiveEaters,
-	DespawnAllNegativeEaters,
-	DespawnAllDeleters,
-	DespawnAllAttractors,
+	PositiveEmitter,
+	NegativeEmitter,
+	Deleter,
+	Attractor,
+	PositiveEater,
+	NegativeEater,
+	DespawnModifier,
+	DespawnAllModifier,
 	SuspendRepulsion,
 	ToggleInertia,
 }
@@ -41,50 +30,27 @@ fn set_binds(mut commands: Commands) {
 	use KeyCode::*;
 
 	let actions = vec![
-		(
-			Equals,
-			SpawnPositiveEmitter,
-			DespawnPositiveEmitter,
-			DespawnAllPositiveEmitters,
-		),
-		(
-			Minus,
-			SpawnNegativeEmitter,
-			DespawnNegativeEmitter,
-			DespawnAllNegativeEmitters,
-		),
-		(Key1, SpawnDeleter, DespawnDeleter, DespawnAllDeleters),
-		(Key2, SpawnAttractor, DespawnAttractor, DespawnAllAttractors),
-		(
-			LBracket,
-			SpawnNegativeEater,
-			DespawnNegativeEater,
-			DespawnAllNegativeEaters,
-		),
-		(
-			RBracket,
-			SpawnPositiveEater,
-			DespawnPositiveEater,
-			DespawnAllPositiveEaters,
-		),
+		(Equals, PositiveEmitter),
+		(Minus, NegativeEmitter),
+		(Key1, Deleter),
+		(Key2, Attractor),
+		(LBracket, NegativeEater),
+		(RBracket, PositiveEater),
 	];
 
 	let left_click: InputKind = MouseButton::Left.into();
 
 	let mut input_map = InputMap::default();
 	input_map.insert(left_click, SpawnParticle);
-	input_map.insert(left_click, SpawnParticle);
-	input_map.insert_chord([LAlt.into(), left_click], DespawnAllParticles);
-	input_map.insert_chord([RAlt.into(), left_click], DespawnAllParticles);
+	input_map.insert(LAlt, DespawnAllModifier);
+	input_map.insert(RAlt, DespawnAllModifier);
+	input_map.insert(LShift, DespawnModifier);
+	input_map.insert(RShift, DespawnModifier);
 	input_map.insert(Space, SuspendRepulsion);
 	input_map.insert(I, ToggleInertia);
 
-	for (key, spawn, despawn, despawn_all) in actions {
-		input_map.insert(key, spawn);
-		input_map.insert_chord([LShift, key], despawn.clone());
-		input_map.insert_chord([RShift, key], despawn);
-		input_map.insert_chord([LAlt, key], despawn_all.clone());
-		input_map.insert_chord([RAlt, key], despawn_all);
+	for (key, action) in actions {
+		input_map.insert(key, action);
 	}
 
 	commands.spawn_bundle(InputManagerBundle::<Action> {
