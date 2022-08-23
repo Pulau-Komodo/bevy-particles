@@ -1,6 +1,11 @@
 use bevy::prelude::*;
 
-use crate::{common::wrapping_offset_2d, movement::Movement, particle::Particle, unwrap_or_return};
+use crate::{
+	common::wrapping_offset_2d,
+	movement::{Movement, MovementTrait},
+	particle::Particle,
+	unwrap_or_return,
+};
 
 #[derive(Component)]
 pub struct Attractor {

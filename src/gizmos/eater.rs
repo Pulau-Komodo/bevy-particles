@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
 	common::{circular_points, find_nearest_within_radius, wrapping_offset_2d, Positive},
 	draw_properties,
-	movement::Movement,
+	movement::{Movement, MovementTrait},
 	particle::{spawn_particle_at_location, Cancelled, NextBatch, Particle},
 	unwrap_or_return,
 };

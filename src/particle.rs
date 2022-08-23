@@ -1,11 +1,14 @@
-use bevy::prelude::*;
+use bevy::{
+	ecs::query::{WorldQuery, WorldQueryGats},
+	prelude::*,
+};
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
 	common::{calculate_force, circular_points, wrapping_offset_2d, Positive},
 	draw_properties::{self, DrawProperties},
 	input::Action,
-	movement::{merge_speed, Movement, MovementBatch2},
+	movement::{merge_speed, Movement, MovementBatch2, MovementTrait},
 	unwrap_or_return,
 };
 
@@ -17,8 +20,14 @@ impl Plugin for ParticlePlugin {
 			.add_startup_system(spawn_initial_particles)
 			.add_system(spawn_particle)
 			.add_system(despawn_all_particles)
-			.add_system(particles_applying_forces.before(merge_speed))
-			.add_system(particles_applying_forces_batch_2.before(merge_speed))
+			.add_system(
+				particles_applying_forces::<Movement, Without<BatchTwo>, With<BatchTwo>>
+					.before(merge_speed),
+			)
+			.add_system(
+				particles_applying_forces::<MovementBatch2, With<BatchTwo>, Without<BatchTwo>>
+					.before(merge_speed),
+			)
 			.add_system(particles_cancelling)
 			.add_system(despawn_cancelled_particles.after(particles_cancelling));
 	}
@@ -83,15 +92,17 @@ fn despawn_all_particles(
 	}
 }
 
-fn particles_applying_forces(
+fn particles_applying_forces<M, F, F2>(
 	time: Res<Time>,
 	windows: Res<Windows>,
-	mut particles: Query<
-		(&mut Movement, Option<&Positive>, &Transform),
-		(With<Particle>, Without<BatchTwo>),
-	>,
-	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, With<BatchTwo>)>,
-) {
+	mut particles: Query<(&mut M, Option<&Positive>, &Transform), (With<Particle>, F)>,
+	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, F2)>,
+) where
+	M: Component + MovementTrait,
+	F: WorldQuery,
+	F2: WorldQuery,
+	for<'a> <F as WorldQueryGats<'a>>::Fetch: Clone,
+{
 	let window = unwrap_or_return!(windows.get_primary());
 
 	let mut combinations = particles.iter_combinations_mut();
@@ -99,14 +110,39 @@ fn particles_applying_forces(
 		[(mut movement_a, positive_a, transform_a), (mut movement_b, positive_b, transform_b)],
 	) = combinations.fetch_next()
 	{
-		if let Some(force) = calculate_force(
+		let force = calculate_force(
 			BASE_FORCE,
 			PROXIMITY_FORCE_CAP,
 			DIMINISHING_POWER,
-			transform_a.translation.truncate(),
-			transform_b.translation.truncate(),
-			Vec2::new(window.width(), window.height()),
-		) {
+			wrapping_offset_2d(
+				transform_a.translation.truncate(),
+				transform_b.translation.truncate(),
+				Vec2::new(window.width(), window.height()),
+			),
+		);
+		let invert_force = if positive_a.is_some() != positive_b.is_some() {
+			-1.0
+		} else {
+			1.0
+		};
+		let force = force * time.delta_seconds() * invert_force;
+
+		movement_a.add(force);
+		movement_b.add(-force);
+	}
+	drop(combinations);
+	for (mut movement, positive_a, transform_a) in &mut particles.iter_mut() {
+		for (positive_b, transform_b) in &other_particles {
+			let force = calculate_force(
+				BASE_FORCE,
+				PROXIMITY_FORCE_CAP,
+				DIMINISHING_POWER,
+				wrapping_offset_2d(
+					transform_a.translation.truncate(),
+					transform_b.translation.truncate(),
+					Vec2::new(window.width(), window.height()),
+				),
+			);
 			let invert_force = if positive_a.is_some() != positive_b.is_some() {
 				-1.0
 			} else {
@@ -114,87 +150,7 @@ fn particles_applying_forces(
 			};
 			let force = force * time.delta_seconds() * invert_force;
 
-			movement_a.add(force);
-			movement_b.add(-force);
-		}
-	}
-	for (mut movement, positive_a, transform_a) in &mut particles.iter_mut() {
-		for (positive_b, transform_b) in &other_particles {
-			if let Some(force) = calculate_force(
-				BASE_FORCE,
-				PROXIMITY_FORCE_CAP,
-				DIMINISHING_POWER,
-				transform_a.translation.truncate(),
-				transform_b.translation.truncate(),
-				Vec2::new(window.width(), window.height()),
-			) {
-				let invert_force = if positive_a.is_some() != positive_b.is_some() {
-					-1.0
-				} else {
-					1.0
-				};
-				let force = force * time.delta_seconds() * invert_force;
-
-				movement.add(force);
-			}
-		}
-	}
-}
-
-fn particles_applying_forces_batch_2(
-	time: Res<Time>,
-	windows: Res<Windows>,
-	mut particles: Query<
-		(&mut MovementBatch2, Option<&Positive>, &Transform),
-		(With<Particle>, With<BatchTwo>),
-	>,
-	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, Without<BatchTwo>)>,
-) {
-	let window = unwrap_or_return!(windows.get_primary());
-
-	let mut combinations = particles.iter_combinations_mut();
-	while let Some(
-		[(mut movement_a, positive_a, transform_a), (mut movement_b, positive_b, transform_b)],
-	) = combinations.fetch_next()
-	{
-		if let Some(force) = calculate_force(
-			BASE_FORCE,
-			PROXIMITY_FORCE_CAP,
-			DIMINISHING_POWER,
-			transform_a.translation.truncate(),
-			transform_b.translation.truncate(),
-			Vec2::new(window.width(), window.height()),
-		) {
-			let invert_force = if positive_a.is_some() != positive_b.is_some() {
-				-1.0
-			} else {
-				1.0
-			};
-			let force = force * time.delta_seconds() * invert_force;
-
-			movement_a.add(force);
-			movement_b.add(-force);
-		}
-	}
-	for (mut movement, positive_a, transform_a) in &mut particles.iter_mut() {
-		for (positive_b, transform_b) in &other_particles {
-			if let Some(force) = calculate_force(
-				BASE_FORCE,
-				PROXIMITY_FORCE_CAP,
-				DIMINISHING_POWER,
-				transform_a.translation.truncate(),
-				transform_b.translation.truncate(),
-				Vec2::new(window.width(), window.height()),
-			) {
-				let invert_force = if positive_a.is_some() != positive_b.is_some() {
-					-1.0
-				} else {
-					1.0
-				};
-				let force = force * time.delta_seconds() * invert_force;
-
-				movement.add(force);
-			}
+			movement.add(force);
 		}
 	}
 }

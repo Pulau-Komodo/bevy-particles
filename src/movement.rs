@@ -20,11 +20,15 @@ impl Plugin for MovementPlugin {
 /// Maximum speed of any movement in units/second.
 const MAX_SPEED: f32 = 200.0;
 
+pub trait MovementTrait {
+	fn add(&mut self, other: Vec2);
+}
+
 #[derive(Default, Component)]
 pub struct Movement(Vec2);
 
-impl Movement {
-	pub fn add(&mut self, movement: Vec2) {
+impl MovementTrait for Movement {
+	fn add(&mut self, movement: Vec2) {
 		self.0 += movement;
 	}
 }
@@ -32,8 +36,8 @@ impl Movement {
 #[derive(Default, Component)]
 pub struct MovementBatch2(Vec2);
 
-impl MovementBatch2 {
-	pub fn add(&mut self, movement: Vec2) {
+impl MovementTrait for MovementBatch2 {
+	fn add(&mut self, movement: Vec2) {
 		self.0 += movement;
 	}
 }
