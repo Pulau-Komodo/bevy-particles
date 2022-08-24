@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 
 use crate::{
-	common::{circular_points, find_nearest_within_radius, wrapping_offset_2d, Positive},
+	common::{
+		calculate_force, circular_points, find_nearest_within_radius, wrapping_offset_2d, Positive,
+	},
 	draw_properties,
 	movement::{Movement, MovementTrait},
 	particle::{spawn_particle_at_location, Cancelled, NextBatch, Particle},
@@ -113,13 +115,12 @@ pub fn eaters_chasing_particles(
 				particle_transform.translation.truncate(),
 				Vec2::new(window.width(), window.height()),
 			);
-			let force = BASE_PURSUIT_FORCE
-				/ offset
-					.length()
-					.max(PROXIMITY_FORCE_CAP)
-					.powf(DIMINISHING_POWER)
-				* offset.normalize()
-				* time.delta_seconds();
+			let force = calculate_force(
+				BASE_PURSUIT_FORCE,
+				PROXIMITY_FORCE_CAP,
+				DIMINISHING_POWER,
+				offset,
+			) * time.delta_seconds();
 
 			eater_movement.add(-force);
 		}

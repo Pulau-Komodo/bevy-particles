@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-	common::wrapping_offset_2d,
+	common::{calculate_force, wrapping_offset_2d},
 	movement::{Movement, MovementTrait},
 	particle::Particle,
 	unwrap_or_return,
@@ -29,20 +29,12 @@ pub fn activate_attractors(
 	for (attractor, attractor_transform) in &attractors {
 		let attractor_position = attractor_transform.translation.truncate();
 		for (mut movement, particle_transform) in &mut particles {
-			let particle_position = particle_transform.translation.truncate();
-			if attractor_position == particle_position {
-				continue;
-			}
-
 			let offset = wrapping_offset_2d(
 				attractor_position,
-				particle_position,
+				particle_transform.translation.truncate(),
 				Vec2::new(window.width(), window.height()),
 			);
-			let force = attractor.force
-				* offset.length_recip().min(0.1).powf(1.05)
-				* offset.normalize()
-				* time.delta_seconds();
+			let force = calculate_force(attractor.force, 10.0, 1.05, offset) * time.delta_seconds();
 
 			movement.add(force);
 		}
