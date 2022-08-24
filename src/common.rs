@@ -76,9 +76,5 @@ pub fn calculate_force(base_force: f32, proximity_cap: f32, exponent: f32, offse
 		return Vec2::ZERO;
 	}
 
-	let force = base_force / offset.length().max(proximity_cap).powf(exponent) * offset.normalize();
-	if !force.is_finite() {
-		return Vec2::ZERO;
-	}
-	force
+	base_force / offset.length().max(proximity_cap).powf(exponent) * offset.normalize()
 }

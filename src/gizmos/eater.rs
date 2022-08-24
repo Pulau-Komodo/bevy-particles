@@ -62,7 +62,7 @@ pub fn activate_eaters(
 		let particle_position = particle_transform.translation.truncate();
 		if let Some((entity, mut eater, eater_positive, eater_location)) =
 			find_nearest_within_radius(
-				Vec2::new(window.width(), window.height()),
+				Vec2::new(window.requested_width(), window.requested_height()),
 				particle_position,
 				EATER_RADIUS,
 				eaters
@@ -113,7 +113,7 @@ pub fn eaters_chasing_particles(
 			let offset = wrapping_offset_2d(
 				eater_position,
 				particle_transform.translation.truncate(),
-				Vec2::new(window.width(), window.height()),
+				Vec2::new(window.requested_width(), window.requested_height()),
 			);
 			let force = calculate_force(
 				BASE_PURSUIT_FORCE,

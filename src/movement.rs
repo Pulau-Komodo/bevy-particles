@@ -49,6 +49,7 @@ pub fn apply_movement(
 	mut movers: Query<(&mut Transform, &mut Movement)>,
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
+	let window_dimensions = Vec2::new(window.requested_width(), window.requested_height());
 
 	for (mut transform, mut movement) in &mut movers {
 		let movement_to_apply = if inertia.0 {
@@ -57,8 +58,8 @@ pub fn apply_movement(
 			movement.0
 		};
 		transform.translation += movement_to_apply.extend(0.0);
-		transform.translation.x = transform.translation.x.rem_euclid(window.width());
-		transform.translation.y = transform.translation.y.rem_euclid(window.height());
+		transform.translation.x = transform.translation.x.rem_euclid(window_dimensions.x);
+		transform.translation.y = transform.translation.y.rem_euclid(window_dimensions.y);
 		if !inertia.0 {
 			movement.0 = Vec2::ZERO;
 		}

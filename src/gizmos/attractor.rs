@@ -32,7 +32,7 @@ pub fn activate_attractors(
 			let offset = wrapping_offset_2d(
 				attractor_position,
 				particle_transform.translation.truncate(),
-				Vec2::new(window.width(), window.height()),
+				Vec2::new(window.requested_width(), window.requested_height()),
 			);
 			let force = calculate_force(attractor.force, 10.0, 1.05, offset) * time.delta_seconds();
 

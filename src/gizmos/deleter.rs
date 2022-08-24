@@ -38,7 +38,7 @@ pub fn activate_deleters(
 			let distance_squared = wrapping_offset_2d(
 				particle_position,
 				deleter_position,
-				Vec2::new(window.width(), window.height()),
+				Vec2::new(window.requested_width(), window.requested_height()),
 			)
 			.length_squared();
 

@@ -117,7 +117,7 @@ fn particles_applying_forces<M, F, F2>(
 			wrapping_offset_2d(
 				transform_a.translation.truncate(),
 				transform_b.translation.truncate(),
-				Vec2::new(window.width(), window.height()),
+				Vec2::new(window.requested_width(), window.requested_height()),
 			),
 		);
 		let invert_force = if positive_a.is_some() != positive_b.is_some() {
@@ -140,7 +140,7 @@ fn particles_applying_forces<M, F, F2>(
 				wrapping_offset_2d(
 					transform_a.translation.truncate(),
 					transform_b.translation.truncate(),
-					Vec2::new(window.width(), window.height()),
+					Vec2::new(window.requested_width(), window.requested_height()),
 				),
 			);
 			let invert_force = if positive_a.is_some() != positive_b.is_some() {
@@ -171,7 +171,7 @@ fn particles_cancelling(
 				let offset = wrapping_offset_2d(
 					transform_pos.translation.truncate(),
 					transform_neg.translation.truncate(),
-					Vec2::new(window.width(), window.height()),
+					Vec2::new(window.requested_width(), window.requested_height()),
 				);
 				if offset.length_squared() < PARTICLE_CANCEL_DISTANCE.powi(2) {
 					cancelled_pos.0 = true;
@@ -197,8 +197,8 @@ fn spawn_initial_particles(
 ) {
 	let window = unwrap_or_return!(windows.get_primary());
 
-	let middle = Vec2::new(window.width(), window.height()) / 2.0;
-	let smallest_dimension = f32::min(window.width(), window.height());
+	let middle = Vec2::new(window.requested_width(), window.requested_height()) / 2.0;
+	let smallest_dimension = f32::min(window.requested_width(), window.requested_height());
 
 	for point in circular_points(
 		middle,

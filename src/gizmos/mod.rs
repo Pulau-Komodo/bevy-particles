@@ -143,7 +143,7 @@ fn spawn_or_despawn_gizmos<'a>(
 	let window = unwrap_or_return!(windows.get_primary());
 	let cursor_pos = unwrap_or_return!(window.cursor_position());
 
-	let window_dimensions = Vec2::new(window.width(), window.height());
+	let window_dimensions = Vec2::new(window.requested_width(), window.requested_height());
 
 	for gizmo in GIZMOS {
 		for (variant, positive) in [
