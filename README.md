@@ -12,13 +12,13 @@ I am moderately happy with the behaviour created by the ruleset in this simulato
 
 ## Controls
 
-Left click places a single (positive) particle. `Shift` + a gizmo button deletes the nearest of that type of gizmo within a small radius of the cirsor. `Alt` + a gizmo button deletes all gizmos of that type. `I` toggles inertia mode.
+Left click places a single (positive) particle. `Shift` + a gizmo button deletes the nearest of that type of gizmo within a small radius of the cirsor. `Alt` + a gizmo button deletes all gizmos of that type. `Up` and `Down` raise and lower the particle limit. `I` toggles inertia mode.
 
 ## Gizmos
 
 All gizmos should have simple rules, and either be relevant to my original mana concept, or create fun, emergent behaviour.
 
-- **Emitter** (positive: `=`, negative: `-`): rapidly spawns particles of their own polarity.
+- **Emitter** (positive: `=`, negative: `-`): rapidly spawns particles of their own polarity. These pause while the particle count is over the limit.
 - **Deleter** (`!`): instantly deletes any particle in its radius.
 - **Attractor** (`@`): attracts particles.
 - **Eater** (positive: `]`, negative: `[`]): chases particles of the opposing polarity, deleting ones that are close. After deleting a target number, it spawns as many particles of its own polarity and goes dormant for a short period.

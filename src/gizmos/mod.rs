@@ -15,8 +15,10 @@ use self::{
 	eater::{
 		activate_eaters, apply_eater_scale, eaters_chasing_particles, process_dormant_eaters, Eater,
 	},
-	emitter::{activate_emitters, Emitter},
+	emitter::{activate_emitters, adjust_particle_limit, Emitter},
 };
+
+pub use self::emitter::ParticleLimit;
 
 mod attractor;
 mod deleter;
@@ -34,7 +36,9 @@ impl Plugin for GizmoPlugin {
 			.add_system(eaters_chasing_particles.before(merge_speed))
 			.add_system(apply_eater_scale)
 			.add_system(process_dormant_eaters)
-			.add_system(spawn_or_despawn_gizmos);
+			.add_system(spawn_or_despawn_gizmos)
+			.init_resource::<ParticleLimit>()
+			.add_system(adjust_particle_limit);
 	}
 }
 

@@ -21,7 +21,8 @@ pub enum Action {
 	NegativeEater,
 	DespawnModifier,
 	DespawnAllModifier,
-	SuspendRepulsion,
+	RaiseParticleLimit,
+	LowerParticleLimit,
 	ToggleInertia,
 }
 
@@ -46,7 +47,8 @@ fn set_binds(mut commands: Commands) {
 	input_map.insert(RAlt, DespawnAllModifier);
 	input_map.insert(LShift, DespawnModifier);
 	input_map.insert(RShift, DespawnModifier);
-	input_map.insert(Space, SuspendRepulsion);
+	input_map.insert(Up, RaiseParticleLimit);
+	input_map.insert(Down, LowerParticleLimit);
 	input_map.insert(I, ToggleInertia);
 
 	for (key, action) in actions {
