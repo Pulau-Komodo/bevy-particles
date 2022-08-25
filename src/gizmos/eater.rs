@@ -7,7 +7,7 @@ use crate::{
 	draw_properties,
 	movement::{Movement, MovementTrait},
 	particle::{spawn_particle_at_location, Cancelled, NextBatch, Particle},
-	unwrap_or_return,
+	WindowDimensions,
 };
 
 /// The radius inside the particle eater will eat particles.
@@ -48,13 +48,11 @@ pub struct Dormant(f32);
 
 pub fn activate_eaters(
 	mut commands: Commands,
-	windows: Res<Windows>,
+	window_dimensions: Res<WindowDimensions>,
 	mut next_batch: ResMut<NextBatch>,
 	mut eaters: Query<(Entity, &mut Eater, Option<&Positive>, &Transform), Without<Dormant>>,
 	mut particles: Query<(Option<&Positive>, &mut Cancelled, &Transform), With<Particle>>,
 ) {
-	let window = unwrap_or_return!(windows.get_primary());
-
 	for (particle_positive, mut cancelled, particle_transform) in particles
 		.iter_mut()
 		.filter(|(_, cancelled, _)| !cancelled.0)
@@ -62,7 +60,7 @@ pub fn activate_eaters(
 		let particle_position = particle_transform.translation.truncate();
 		if let Some((entity, mut eater, eater_positive, eater_location)) =
 			find_nearest_within_radius(
-				Vec2::new(window.requested_width(), window.requested_height()),
+				window_dimensions.0,
 				particle_position,
 				EATER_RADIUS,
 				eaters
@@ -95,15 +93,13 @@ pub fn activate_eaters(
 
 pub fn eaters_chasing_particles(
 	time: Res<Time>,
-	windows: Res<Windows>,
+	window_dimensions: Res<WindowDimensions>,
 	mut eaters: Query<
 		(Option<&Positive>, &mut Movement, &Transform),
 		(With<Eater>, Without<Dormant>),
 	>,
 	particles: Query<(Option<&Positive>, &Transform), With<Particle>>,
 ) {
-	let window = unwrap_or_return!(windows.get_primary());
-
 	for (eater_positive, mut eater_movement, eater_transform) in &mut eaters {
 		let eater_position = eater_transform.translation.truncate();
 
@@ -113,7 +109,7 @@ pub fn eaters_chasing_particles(
 			let offset = wrapping_offset_2d(
 				eater_position,
 				particle_transform.translation.truncate(),
-				Vec2::new(window.requested_width(), window.requested_height()),
+				window_dimensions.0,
 			);
 			let force = calculate_force(
 				BASE_PURSUIT_FORCE,

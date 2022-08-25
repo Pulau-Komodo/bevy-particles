@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::input::Action;
-use crate::unwrap_or_return;
+use crate::WindowDimensions;
 
 use leafwing_input_manager::prelude::ActionState;
 
@@ -44,13 +44,10 @@ impl MovementTrait for MovementBatch2 {
 
 pub fn apply_movement(
 	time: Res<Time>,
-	windows: Res<Windows>,
+	window_dimensions: Res<WindowDimensions>,
 	inertia: Res<Inertia>,
 	mut movers: Query<(&mut Transform, &mut Movement)>,
 ) {
-	let window = unwrap_or_return!(windows.get_primary());
-	let window_dimensions = Vec2::new(window.requested_width(), window.requested_height());
-
 	for (mut transform, mut movement) in &mut movers {
 		let movement_to_apply = if inertia.0 {
 			movement.0 * time.delta_seconds() * 0.5
@@ -58,8 +55,8 @@ pub fn apply_movement(
 			movement.0
 		};
 		transform.translation += movement_to_apply.extend(0.0);
-		transform.translation.x = transform.translation.x.rem_euclid(window_dimensions.x);
-		transform.translation.y = transform.translation.y.rem_euclid(window_dimensions.y);
+		transform.translation.x = transform.translation.x.rem_euclid(window_dimensions.0.x);
+		transform.translation.y = transform.translation.y.rem_euclid(window_dimensions.0.y);
 		if !inertia.0 {
 			movement.0 = Vec2::ZERO;
 		}

@@ -9,7 +9,7 @@ use crate::{
 	draw_properties::{self, DrawProperties},
 	input::Action,
 	movement::{merge_speed, Movement, MovementBatch2, MovementTrait},
-	unwrap_or_return,
+	unwrap_or_return, WindowDimensions,
 };
 
 pub struct ParticlePlugin;
@@ -94,7 +94,7 @@ fn despawn_all_particles(
 
 fn particles_applying_forces<M, F, F2>(
 	time: Res<Time>,
-	windows: Res<Windows>,
+	window_dimensions: Res<WindowDimensions>,
 	mut particles: Query<(&mut M, Option<&Positive>, &Transform), (With<Particle>, F)>,
 	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, F2)>,
 ) where
@@ -103,8 +103,6 @@ fn particles_applying_forces<M, F, F2>(
 	F2: WorldQuery,
 	for<'a> <F as WorldQueryGats<'a>>::Fetch: Clone,
 {
-	let window = unwrap_or_return!(windows.get_primary());
-
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some(
 		[(mut movement_a, positive_a, transform_a), (mut movement_b, positive_b, transform_b)],
@@ -117,7 +115,7 @@ fn particles_applying_forces<M, F, F2>(
 			wrapping_offset_2d(
 				transform_a.translation.truncate(),
 				transform_b.translation.truncate(),
-				Vec2::new(window.requested_width(), window.requested_height()),
+				window_dimensions.0,
 			),
 		);
 		let invert_force = if positive_a.is_some() != positive_b.is_some() {
@@ -140,7 +138,7 @@ fn particles_applying_forces<M, F, F2>(
 				wrapping_offset_2d(
 					transform_a.translation.truncate(),
 					transform_b.translation.truncate(),
-					Vec2::new(window.requested_width(), window.requested_height()),
+					window_dimensions.0,
 				),
 			);
 			let invert_force = if positive_a.is_some() != positive_b.is_some() {
@@ -156,22 +154,20 @@ fn particles_applying_forces<M, F, F2>(
 }
 
 fn particles_cancelling(
-	windows: Res<Windows>,
+	window_dimensions: Res<WindowDimensions>,
 	mut positive_particles: Query<(&mut Cancelled, &Transform), (With<Particle>, With<Positive>)>,
 	mut negative_particles: Query<
 		(&mut Cancelled, &Transform),
 		(With<Particle>, Without<Positive>),
 	>,
 ) {
-	let window = unwrap_or_return!(windows.get_primary());
-
 	for (mut cancelled_pos, transform_pos) in &mut positive_particles {
 		for (mut cancelled_neg, transform_neg) in &mut negative_particles {
 			if !cancelled_pos.0 && !cancelled_neg.0 {
 				let offset = wrapping_offset_2d(
 					transform_pos.translation.truncate(),
 					transform_neg.translation.truncate(),
-					Vec2::new(window.requested_width(), window.requested_height()),
+					window_dimensions.0,
 				);
 				if offset.length_squared() < PARTICLE_CANCEL_DISTANCE.powi(2) {
 					cancelled_pos.0 = true;
@@ -193,12 +189,10 @@ fn despawn_cancelled_particles(mut commands: Commands, particles: Query<(Entity,
 fn spawn_initial_particles(
 	mut commands: Commands,
 	mut next_batch: ResMut<NextBatch>,
-	windows: Res<Windows>,
+	window_dimensions: Res<WindowDimensions>,
 ) {
-	let window = unwrap_or_return!(windows.get_primary());
-
-	let middle = Vec2::new(window.requested_width(), window.requested_height()) / 2.0;
-	let smallest_dimension = f32::min(window.requested_width(), window.requested_height());
+	let middle = window_dimensions.0 / 2.0;
+	let smallest_dimension = f32::min(window_dimensions.0.x, window_dimensions.0.y);
 
 	for point in circular_points(
 		middle,

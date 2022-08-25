@@ -6,7 +6,7 @@ use crate::{
 	draw_properties::{self, DrawProperties},
 	input::Action,
 	movement::{merge_speed, Movement},
-	unwrap_or_return,
+	unwrap_or_return, WindowDimensions,
 };
 
 use self::{
@@ -140,14 +140,13 @@ impl GizmoComponent {
 fn spawn_or_despawn_gizmos<'a>(
 	mut commands: Commands,
 	windows: Res<Windows>,
+	window_dimensions: Res<WindowDimensions>,
 	action_state: Query<&'a ActionState<Action>>,
 	gizmos: Query<(Entity, &'a Transform, &'a GizmoType, Option<&'a Positive>)>,
 ) {
 	let action_state = action_state.single();
 	let window = unwrap_or_return!(windows.get_primary());
 	let cursor_pos = unwrap_or_return!(window.cursor_position());
-
-	let window_dimensions = Vec2::new(window.requested_width(), window.requested_height());
 
 	for gizmo in GIZMOS {
 		for (variant, positive) in [
@@ -164,7 +163,7 @@ fn spawn_or_despawn_gizmos<'a>(
 					despawn_gizmo(
 						&mut commands,
 						cursor_pos,
-						window_dimensions,
+						window_dimensions.0,
 						&gizmo,
 						&gizmos,
 						*positive,

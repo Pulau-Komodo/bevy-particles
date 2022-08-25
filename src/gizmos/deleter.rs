@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{common::wrapping_offset_2d, particle::Particle, unwrap_or_return};
+use crate::{common::wrapping_offset_2d, particle::Particle, WindowDimensions};
 
 #[derive(Component)]
 pub struct Deleter {
@@ -25,22 +25,17 @@ impl Default for Deleter {
 
 pub fn activate_deleters(
 	mut commands: Commands,
-	windows: Res<Windows>,
+	window_dimensions: Res<WindowDimensions>,
 	deleters: Query<(&Deleter, &Transform)>,
 	particles: Query<(Entity, &Transform), With<Particle>>,
 ) {
-	let window = unwrap_or_return!(windows.get_primary());
-
 	'particle: for (particle, particle_transform) in &particles {
 		let particle_position = particle_transform.translation.truncate();
 		for (deleter, deleter_transform) in &deleters {
 			let deleter_position = deleter_transform.translation.truncate();
-			let distance_squared = wrapping_offset_2d(
-				particle_position,
-				deleter_position,
-				Vec2::new(window.requested_width(), window.requested_height()),
-			)
-			.length_squared();
+			let distance_squared =
+				wrapping_offset_2d(particle_position, deleter_position, window_dimensions.0)
+					.length_squared();
 
 			if distance_squared < deleter.radius_squared {
 				commands.entity(particle).despawn();
