@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+	prelude::*,
+	window::{PrimaryWindow, WindowResolution},
+};
 use gizmos::GizmoPlugin;
 use gui::GuiPlugin;
 use input::InputPlugin;
@@ -18,42 +21,42 @@ pub const CLICK_RADIUS: f32 = 15.0;
 pub const CLICK_RADIUS_SQUARED: f32 = CLICK_RADIUS * CLICK_RADIUS;
 
 fn main() {
-	let window_dimensions = Vec2::new(1600.0, 900.0);
-
+	let window_size = Vec2::new(1600.0, 900.0);
 	App::new()
 		.insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
-		.insert_resource(WindowDescriptor {
-			width: window_dimensions.x,
-			height: window_dimensions.y,
-			title: String::from("Particle simulator"),
-			..default()
-		})
-		.insert_resource(WindowDimensions(window_dimensions))
-		.add_plugins(DefaultPlugins)
-		.add_plugin(InputPlugin)
-		.add_plugin(MovementPlugin)
-		.add_plugin(ParticlePlugin)
-		.add_plugin(GizmoPlugin)
-		.add_plugin(GuiPlugin)
-		.add_startup_system(spawn_camera)
-		.add_system(update_window_dimensions)
+		.insert_resource(WindowDimensions(window_size))
+		.add_plugins((
+			DefaultPlugins.set(WindowPlugin {
+				primary_window: Some(Window {
+					resolution: WindowResolution::from(window_size), //::new(window_size.x, window_size.y),
+					title: String::from("Particle simulator"),
+					..default()
+				}),
+				..default()
+			}),
+			InputPlugin,
+			MovementPlugin,
+			ParticlePlugin,
+			GizmoPlugin,
+			GuiPlugin,
+		))
+		.add_systems(Startup, spawn_camera)
+		.add_systems(Update, update_window_dimensions)
 		.run();
 }
 
 fn spawn_camera(mut commands: Commands) {
-	commands.spawn_bundle(Camera2dBundle {
+	commands.spawn(Camera2dBundle {
 		projection: OrthographicProjection {
-			left: 0.0,
-			right: 1.0,
-			bottom: 0.0,
-			top: 1.0,
-			window_origin: bevy::render::camera::WindowOrigin::BottomLeft,
+			viewport_origin: Vec2::ZERO,
+			near: -1000.0,
 			..default()
 		},
 		..default()
 	});
 }
 
+#[derive(Resource)]
 pub struct WindowDimensions(Vec2);
 
 impl WindowDimensions {
@@ -63,8 +66,11 @@ impl WindowDimensions {
 }
 
 /// A layer between the actual window size and the size the simulation will act like it has. Minimizing sets the window dimensions to 0, and that messes things up. This system will just not update anything when the dimensions are 0.
-fn update_window_dimensions(windows: Res<Windows>, mut dimensions: ResMut<WindowDimensions>) {
-	let primary = unwrap_or_return!(windows.get_primary());
+fn update_window_dimensions(
+	windows: Query<&Window, With<PrimaryWindow>>,
+	mut dimensions: ResMut<WindowDimensions>,
+) {
+	let primary = unwrap_or_return!(windows.get_single().ok());
 	let actual_dimensions = Vec2::new(primary.width(), primary.height());
 	if actual_dimensions.x == 0.0 || actual_dimensions.y == 0.0 {
 		return;

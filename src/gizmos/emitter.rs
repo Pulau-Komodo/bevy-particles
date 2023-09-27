@@ -56,6 +56,7 @@ pub fn activate_emitters(
 	}
 }
 
+#[derive(Resource)]
 pub struct ParticleLimit(u32);
 
 impl ParticleLimit {

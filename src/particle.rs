@@ -1,6 +1,7 @@
 use bevy::{
-	ecs::query::{WorldQuery, WorldQueryGats},
+	ecs::query::{ReadOnlyWorldQuery, WorldQuery},
 	prelude::*,
+	window::PrimaryWindow,
 };
 use leafwing_input_manager::prelude::ActionState;
 
@@ -17,19 +18,24 @@ pub struct ParticlePlugin;
 impl Plugin for ParticlePlugin {
 	fn build(&self, app: &mut App) {
 		app.init_resource::<NextBatch>()
-			.add_startup_system(spawn_initial_particles)
-			.add_system(spawn_particle)
-			.add_system(despawn_all_particles)
-			.add_system(
-				particles_applying_forces::<Movement, Without<BatchTwo>, With<BatchTwo>>
-					.before(merge_speed),
-			)
-			.add_system(
-				particles_applying_forces::<MovementBatch2, With<BatchTwo>, Without<BatchTwo>>
-					.before(merge_speed),
-			)
-			.add_system(particles_cancelling)
-			.add_system(despawn_cancelled_particles.after(particles_cancelling));
+			.add_systems(Startup, spawn_initial_particles)
+			.add_systems(
+				Update,
+				(
+					spawn_particle,
+					despawn_all_particles,
+					(
+						particles_applying_forces::<Movement, Without<BatchTwo>, With<BatchTwo>>,
+						particles_applying_forces::<
+							MovementBatch2,
+							With<BatchTwo>,
+							Without<BatchTwo>,
+						>,
+					)
+						.before(merge_speed),
+					(particles_cancelling, despawn_cancelled_particles).chain(),
+				),
+			);
 	}
 }
 
@@ -58,7 +64,7 @@ pub struct Cancelled(pub bool);
 
 fn spawn_particle(
 	mut commands: Commands,
-	windows: Res<Windows>,
+	window: Query<&Window, With<PrimaryWindow>>,
 	mut next_batch: ResMut<NextBatch>,
 	action_state: Query<&ActionState<Action>>,
 ) {
@@ -68,9 +74,9 @@ fn spawn_particle(
 	{
 		return;
 	}
-	let cursor_pos = unwrap_or_return!(windows
-		.get_primary()
-		.and_then(|window| window.cursor_position()));
+	let cursor_pos = unwrap_or_return!(window.get_single().ok().and_then(|window| window
+		.cursor_position()
+		.map(|pos| Vec2::new(pos.x, window.height() - pos.y))));
 
 	spawn_particle_at_location(&mut commands, &mut next_batch, cursor_pos, true);
 }
@@ -99,9 +105,8 @@ fn particles_applying_forces<M, F, F2>(
 	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, F2)>,
 ) where
 	M: Component + MovementTrait,
-	F: WorldQuery,
-	F2: WorldQuery,
-	for<'a> <F as WorldQueryGats<'a>>::Fetch: Clone,
+	F: WorldQuery + ReadOnlyWorldQuery,
+	F2: WorldQuery + ReadOnlyWorldQuery,
 {
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some(
@@ -203,9 +208,8 @@ fn spawn_initial_particles(
 	}
 }
 
-#[derive(Default, Bundle)]
+#[derive(Bundle, Default)]
 struct ParticleBundle {
-	#[bundle]
 	sprite_bundle: SpriteBundle,
 	particle: Particle,
 	movement: Movement,
@@ -229,7 +233,7 @@ pub fn spawn_particle_at_location(
 		color,
 	} = draw_properties;
 
-	let mut entity_commands = commands.spawn_bundle(ParticleBundle {
+	let mut entity_commands = commands.spawn(ParticleBundle {
 		sprite_bundle: SpriteBundle {
 			sprite: Sprite { color, ..default() },
 			transform: Transform {
@@ -257,5 +261,5 @@ pub fn spawn_particle_at_location(
 #[derive(Component)]
 pub struct BatchTwo;
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 pub struct NextBatch(u8);

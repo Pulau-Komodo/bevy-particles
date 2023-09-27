@@ -1,4 +1,4 @@
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy::{ecs::system::EntityCommands, prelude::*, window::PrimaryWindow};
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
@@ -29,16 +29,20 @@ pub struct GizmoPlugin;
 
 impl Plugin for GizmoPlugin {
 	fn build(&self, app: &mut App) {
-		app.add_system(activate_attractors.before(merge_speed))
-			.add_system(activate_deleters)
-			.add_system(activate_emitters)
-			.add_system(activate_eaters)
-			.add_system(eaters_chasing_particles.before(merge_speed))
-			.add_system(apply_eater_scale)
-			.add_system(process_dormant_eaters)
-			.add_system(spawn_or_despawn_gizmos)
-			.init_resource::<ParticleLimit>()
-			.add_system(adjust_particle_limit);
+		app.add_systems(
+			Update,
+			(
+				(activate_attractors, eaters_chasing_particles).before(merge_speed),
+				activate_deleters,
+				activate_emitters,
+				activate_eaters,
+				apply_eater_scale,
+				process_dormant_eaters,
+				spawn_or_despawn_gizmos,
+				adjust_particle_limit,
+			),
+		)
+		.init_resource::<ParticleLimit>();
 	}
 }
 
@@ -139,14 +143,15 @@ impl GizmoComponent {
 
 fn spawn_or_despawn_gizmos<'a>(
 	mut commands: Commands,
-	windows: Res<Windows>,
+	window: Query<&Window, With<PrimaryWindow>>,
 	window_dimensions: Res<WindowDimensions>,
 	action_state: Query<&'a ActionState<Action>>,
 	gizmos: Query<(Entity, &'a Transform, &'a GizmoType, Option<&'a Positive>)>,
 ) {
 	let action_state = action_state.single();
-	let window = unwrap_or_return!(windows.get_primary());
+	let window = unwrap_or_return!(window.get_single().ok());
 	let cursor_pos = unwrap_or_return!(window.cursor_position());
+	let cursor_pos = Vec2::new(cursor_pos.x, window.height() - cursor_pos.y);
 
 	for gizmo in GIZMOS {
 		for (variant, positive) in [
@@ -188,10 +193,8 @@ fn spawn_gizmo<'a>(commands: &'a mut Commands, position: Vec2, gizmo: &'a Gizmo,
 		color,
 	} = variant.draw_properties;
 
-	let mut entity_commands = commands.spawn();
-
-	entity_commands
-		.insert_bundle(SpriteBundle {
+	let mut entity_commands = commands.spawn((
+		SpriteBundle {
 			sprite: Sprite { color, ..default() },
 			transform: Transform {
 				translation: position.extend(draw_priority),
@@ -199,8 +202,9 @@ fn spawn_gizmo<'a>(commands: &'a mut Commands, position: Vec2, gizmo: &'a Gizmo,
 				..default()
 			},
 			..default()
-		})
-		.insert(gizmo.gizmo_type);
+		},
+		gizmo.gizmo_type,
+	));
 
 	let component = GizmoComponent::default_of_type(gizmo.gizmo_type);
 	component.insert_using(&mut entity_commands);

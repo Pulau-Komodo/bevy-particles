@@ -62,7 +62,7 @@ pub fn find_nearest_within_radius<'a, T>(
 /// Generates a series of points in a circle around the midpoint.
 pub fn circular_points(midpoint: Vec2, radius: f32, count: u32) -> impl Iterator<Item = Vec2> {
 	let offset = Vec2::Y * radius;
-	(0..count).into_iter().map(move |n| {
+	(0..count).map(move |n| {
 		midpoint + Mat2::from_angle(n as f32 * std::f32::consts::PI * 2.0 / count as f32) * offset
 	})
 }

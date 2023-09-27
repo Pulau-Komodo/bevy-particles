@@ -9,11 +9,13 @@ pub struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
 	fn build(&self, app: &mut App) {
-		app.init_resource::<Inertia>()
-			.add_system(toggle_inertia)
-			.add_system(merge_speed)
-			.add_system(clamp_speed.after(merge_speed))
-			.add_system(apply_movement.after(clamp_speed));
+		app.init_resource::<Inertia>().add_systems(
+			Update,
+			(
+				toggle_inertia,
+				(merge_speed, clamp_speed, apply_movement).chain(),
+			),
+		);
 	}
 }
 
@@ -63,7 +65,7 @@ pub fn apply_movement(
 	}
 }
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 pub struct Inertia(bool);
 
 pub fn toggle_inertia(mut inertia: ResMut<Inertia>, action_state: Query<&ActionState<Action>>) {
