@@ -29,20 +29,20 @@ pub struct GizmoPlugin;
 
 impl Plugin for GizmoPlugin {
 	fn build(&self, app: &mut App) {
-		app.add_systems(
-			Update,
-			(
-				(activate_attractors, eaters_chasing_particles).before(merge_speed),
-				activate_deleters,
-				activate_emitters,
-				activate_eaters,
-				apply_eater_scale,
-				process_dormant_eaters,
-				spawn_or_despawn_gizmos,
-				adjust_particle_limit,
-			),
-		)
-		.init_resource::<ParticleLimit>();
+		app.add_systems(Update, spawn_or_despawn_gizmos)
+			.add_systems(
+				FixedUpdate,
+				(
+					(activate_attractors, eaters_chasing_particles).before(merge_speed),
+					activate_deleters,
+					activate_emitters,
+					activate_eaters,
+					apply_eater_scale,
+					process_dormant_eaters,
+					adjust_particle_limit,
+				),
+			)
+			.init_resource::<ParticleLimit>();
 	}
 }
 

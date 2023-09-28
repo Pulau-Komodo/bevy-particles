@@ -20,11 +20,14 @@ mod particle;
 pub const CLICK_RADIUS: f32 = 15.0;
 pub const CLICK_RADIUS_SQUARED: f32 = CLICK_RADIUS * CLICK_RADIUS;
 
+pub const TIMESTEP: f32 = 1.0 / 60.0;
+
 fn main() {
 	let window_size = Vec2::new(1600.0, 900.0);
 	App::new()
 		.insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
 		.insert_resource(WindowDimensions(window_size))
+		.insert_resource(FixedTime::new_from_secs(TIMESTEP))
 		.add_plugins((
 			DefaultPlugins.set(WindowPlugin {
 				primary_window: Some(Window {

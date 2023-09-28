@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::input::Action;
-use crate::WindowDimensions;
+use crate::{WindowDimensions, TIMESTEP};
 
 use leafwing_input_manager::prelude::ActionState;
 
@@ -9,13 +9,12 @@ pub struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
 	fn build(&self, app: &mut App) {
-		app.init_resource::<Inertia>().add_systems(
-			Update,
-			(
-				toggle_inertia,
+		app.init_resource::<Inertia>()
+			.add_systems(Update, (toggle_inertia,))
+			.add_systems(
+				FixedUpdate,
 				(merge_speed, clamp_speed, apply_movement).chain(),
-			),
-		);
+			);
 	}
 }
 
@@ -45,14 +44,13 @@ impl MovementTrait for MovementBatch2 {
 }
 
 pub fn apply_movement(
-	time: Res<Time>,
 	window_dimensions: Res<WindowDimensions>,
 	inertia: Res<Inertia>,
 	mut movers: Query<(&mut Transform, &mut Movement)>,
 ) {
 	for (mut transform, mut movement) in &mut movers {
 		let movement_to_apply = if inertia.0 {
-			movement.0 * time.delta_seconds() * 0.5
+			movement.0 * TIMESTEP * 0.5
 		} else {
 			movement.0
 		};
@@ -81,12 +79,10 @@ pub fn merge_speed(mut movers: Query<(&mut Movement, &mut MovementBatch2)>) {
 	}
 }
 
-pub fn clamp_speed(time: Res<Time>, inertia: Res<Inertia>, mut movers: Query<&mut Movement>) {
+pub fn clamp_speed(inertia: Res<Inertia>, mut movers: Query<&mut Movement>) {
 	if !inertia.0 {
 		for mut movement in &mut movers {
-			movement.0 = movement
-				.0
-				.clamp_length_max(MAX_SPEED * time.delta_seconds());
+			movement.0 = movement.0.clamp_length_max(MAX_SPEED * TIMESTEP);
 		}
 	}
 }

@@ -10,7 +10,7 @@ use crate::{
 	draw_properties::{self, DrawProperties},
 	input::Action,
 	movement::{merge_speed, Movement, MovementBatch2, MovementTrait},
-	unwrap_or_return, WindowDimensions,
+	unwrap_or_return, WindowDimensions, TIMESTEP,
 };
 
 pub struct ParticlePlugin;
@@ -19,11 +19,10 @@ impl Plugin for ParticlePlugin {
 	fn build(&self, app: &mut App) {
 		app.init_resource::<NextBatch>()
 			.add_systems(Startup, spawn_initial_particles)
+			.add_systems(Update, (spawn_particle, despawn_all_particles))
 			.add_systems(
-				Update,
+				FixedUpdate,
 				(
-					spawn_particle,
-					despawn_all_particles,
 					(
 						particles_applying_forces::<Movement, Without<BatchTwo>, With<BatchTwo>>,
 						particles_applying_forces::<
@@ -99,7 +98,6 @@ fn despawn_all_particles(
 }
 
 fn particles_applying_forces<M, F, F2>(
-	time: Res<Time>,
 	window_dimensions: Res<WindowDimensions>,
 	mut particles: Query<(&mut M, Option<&Positive>, &Transform), (With<Particle>, F)>,
 	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, F2)>,
@@ -128,7 +126,7 @@ fn particles_applying_forces<M, F, F2>(
 		} else {
 			1.0
 		};
-		let force = force * time.delta_seconds() * invert_force;
+		let force = force * TIMESTEP * invert_force;
 
 		movement_a.add(force);
 		movement_b.add(-force);
@@ -151,7 +149,7 @@ fn particles_applying_forces<M, F, F2>(
 			} else {
 				1.0
 			};
-			let force = force * time.delta_seconds() * invert_force;
+			let force = force * TIMESTEP * invert_force;
 
 			movement.add(force);
 		}

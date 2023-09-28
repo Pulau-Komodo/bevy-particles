@@ -7,7 +7,7 @@ use crate::{
 	draw_properties,
 	movement::{Movement, MovementTrait},
 	particle::{spawn_particle_at_location, Cancelled, NextBatch, Particle},
-	WindowDimensions,
+	WindowDimensions, TIMESTEP,
 };
 
 /// The radius inside the particle eater will eat particles.
@@ -92,7 +92,6 @@ pub fn activate_eaters(
 }
 
 pub fn eaters_chasing_particles(
-	time: Res<Time>,
 	window_dimensions: Res<WindowDimensions>,
 	mut eaters: Query<
 		(Option<&Positive>, &mut Movement, &Transform),
@@ -116,7 +115,7 @@ pub fn eaters_chasing_particles(
 				PROXIMITY_FORCE_CAP,
 				DIMINISHING_POWER,
 				offset,
-			) * time.delta_seconds();
+			) * TIMESTEP;
 
 			eater_movement.add(-force);
 		}
@@ -137,11 +136,10 @@ pub fn apply_eater_scale(mut eaters: Query<(&Eater, &mut Transform)>) {
 
 pub fn process_dormant_eaters(
 	mut commands: Commands,
-	time: Res<Time>,
 	mut eaters: Query<(Entity, &mut Eater, &mut Dormant)>,
 ) {
 	for (entity, mut eater, mut dormant) in &mut eaters {
-		dormant.0 -= time.delta_seconds();
+		dormant.0 -= TIMESTEP;
 		if dormant.0 <= 0.0 {
 			eater.eaten = 0;
 			commands.entity(entity).remove::<Dormant>();

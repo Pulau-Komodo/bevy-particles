@@ -5,6 +5,7 @@ use crate::{
 	common::Positive,
 	input::Action,
 	particle::{spawn_particle_at_location, NextBatch, Particle},
+	TIMESTEP,
 };
 
 #[derive(Component)]
@@ -30,7 +31,6 @@ impl Default for Emitter {
 
 pub fn activate_emitters(
 	mut commands: Commands,
-	time: Res<Time>,
 	limit: Res<ParticleLimit>,
 	mut next_batch: ResMut<NextBatch>,
 	particles: Query<(), With<Particle>>,
@@ -51,7 +51,7 @@ pub fn activate_emitters(
 			);
 			emitter.time_since_emitting -= emitter.interval;
 		} else {
-			emitter.time_since_emitting += time.delta_seconds();
+			emitter.time_since_emitting += TIMESTEP;
 		}
 	}
 }

@@ -4,7 +4,7 @@ use crate::{
 	common::{calculate_force, wrapping_offset_2d},
 	movement::{Movement, MovementTrait},
 	particle::Particle,
-	WindowDimensions,
+	WindowDimensions, TIMESTEP,
 };
 
 #[derive(Component)]
@@ -19,7 +19,6 @@ impl Default for Attractor {
 }
 
 pub fn activate_attractors(
-	time: Res<Time>,
 	window_dimensions: Res<WindowDimensions>,
 	attractors: Query<(&Attractor, &Transform)>,
 	mut particles: Query<(&mut Movement, &Transform), With<Particle>>,
@@ -32,7 +31,7 @@ pub fn activate_attractors(
 				particle_transform.translation.truncate(),
 				window_dimensions.0,
 			);
-			let force = calculate_force(attractor.force, 10.0, 1.05, offset) * time.delta_seconds();
+			let force = calculate_force(attractor.force, 10.0, 1.05, offset) * TIMESTEP;
 
 			movement.add(force);
 		}
