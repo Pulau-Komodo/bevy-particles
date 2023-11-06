@@ -27,7 +27,7 @@ fn main() {
 	App::new()
 		.insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
 		.insert_resource(WindowDimensions(window_size))
-		.insert_resource(FixedTime::new_from_secs(TIMESTEP))
+		.insert_resource(Time::<Fixed>::from_seconds(TIMESTEP as f64))
 		.add_plugins((
 			DefaultPlugins.set(WindowPlugin {
 				primary_window: Some(Window {
