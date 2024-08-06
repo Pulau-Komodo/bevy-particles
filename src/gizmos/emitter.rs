@@ -84,8 +84,8 @@ pub fn adjust_particle_limit(
 	let action_state = action_state.single();
 
 	match (
-		action_state.just_pressed(Action::RaiseParticleLimit),
-		action_state.just_pressed(Action::LowerParticleLimit),
+		action_state.just_pressed(&Action::RaiseParticleLimit),
+		action_state.just_pressed(&Action::LowerParticleLimit),
 	) {
 		(true, false) => limit.raise(),
 		(false, true) => limit.lower(),

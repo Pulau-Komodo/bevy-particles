@@ -1,4 +1,4 @@
-use bevy::{prelude::*, reflect::TypePath};
+use bevy::prelude::*;
 use leafwing_input_manager::{prelude::*, user_input::InputKind};
 
 pub struct InputPlugin;
@@ -10,7 +10,7 @@ impl Plugin for InputPlugin {
 	}
 }
 
-#[derive(Debug, Clone, Actionlike, TypePath)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Reflect, Actionlike)]
 pub enum Action {
 	SpawnParticle,
 	PositiveEmitter,
@@ -31,10 +31,10 @@ fn set_binds(mut commands: Commands) {
 	use KeyCode::*;
 
 	let actions = vec![
-		(Equals, PositiveEmitter),
+		(Equal, PositiveEmitter),
 		(Minus, NegativeEmitter),
-		(Key1, Deleter),
-		(Key2, Attractor),
+		(Digit1, Deleter),
+		(Digit2, Attractor),
 		(BracketLeft, NegativeEater),
 		(BracketRight, PositiveEater),
 	];
@@ -42,17 +42,17 @@ fn set_binds(mut commands: Commands) {
 	let left_click: InputKind = MouseButton::Left.into();
 
 	let mut input_map = InputMap::default();
-	input_map.insert(left_click, SpawnParticle);
-	input_map.insert(AltLeft, DespawnAllModifier);
-	input_map.insert(AltRight, DespawnAllModifier);
-	input_map.insert(ShiftLeft, DespawnModifier);
-	input_map.insert(ShiftRight, DespawnModifier);
-	input_map.insert(Up, RaiseParticleLimit);
-	input_map.insert(Down, LowerParticleLimit);
-	input_map.insert(I, ToggleInertia);
+	input_map.insert(SpawnParticle, left_click);
+	input_map.insert(DespawnAllModifier, AltLeft);
+	input_map.insert(DespawnAllModifier, AltRight);
+	input_map.insert(DespawnModifier, ShiftLeft);
+	input_map.insert(DespawnModifier, ShiftRight);
+	input_map.insert(RaiseParticleLimit, ArrowUp);
+	input_map.insert(LowerParticleLimit, ArrowDown);
+	input_map.insert(ToggleInertia, KeyI);
 
 	for (key, action) in actions {
-		input_map.insert(key, action);
+		input_map.insert(action, key);
 	}
 
 	commands.spawn(InputManagerBundle::<Action> {

@@ -90,7 +90,7 @@ fn update_fps(diagnostics: Res<DiagnosticsStore>, mut text: Query<&mut Text, Wit
 	let mut text = text.single_mut();
 
 	if let Some(fps) = diagnostics
-		.get(FrameTimeDiagnosticsPlugin::FPS)
+		.get(&FrameTimeDiagnosticsPlugin::FPS)
 		.and_then(bevy::diagnostic::Diagnostic::average)
 	{
 		text.sections[0].value = format!("{}", fps.round());

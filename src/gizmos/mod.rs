@@ -128,10 +128,10 @@ impl GizmoComponent {
 			GizmoType::Eater => Self::Eater(Eater::default()),
 		}
 	}
-	fn insert_using<'l, 'a, 'b, 'c>(
+	fn insert_using<'l, 'a>(
 		self,
-		entity_commands: &'l mut EntityCommands<'a, 'b, 'c>,
-	) -> &'l mut EntityCommands<'a, 'b, 'c> {
+		entity_commands: &'l mut EntityCommands<'a>,
+	) -> &'l mut EntityCommands<'a> {
 		match self {
 			Self::Emitter(c) => entity_commands.insert(c),
 			Self::Deleter(c) => entity_commands.insert(c),
@@ -161,10 +161,10 @@ fn spawn_or_despawn_gizmos<'a>(
 		.iter()
 		.filter_map(|(x, p)| x.map(|x| (x, p)))
 		{
-			if action_state.just_pressed(variant.action.clone()) {
-				if action_state.pressed(Action::DespawnAllModifier) {
+			if action_state.just_pressed(&variant.action) {
+				if action_state.pressed(&Action::DespawnAllModifier) {
 					despawn_all_gizmos(&mut commands, &gizmo, &gizmos, *positive);
-				} else if action_state.pressed(Action::DespawnModifier) {
+				} else if action_state.pressed(&Action::DespawnModifier) {
 					despawn_gizmo(
 						&mut commands,
 						cursor_pos,

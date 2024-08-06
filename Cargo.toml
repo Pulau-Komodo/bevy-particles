@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.12.0"
-itertools = "0.11.0"
-leafwing-input-manager = "0.11.1"
+bevy = "0.14.1"
+itertools = "0.13.0"
+leafwing-input-manager = "0.14.0"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

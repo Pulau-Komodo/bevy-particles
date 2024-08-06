@@ -1,5 +1,5 @@
 use bevy::{
-	ecs::query::{ReadOnlyWorldQuery, WorldQuery},
+	ecs::query::{QueryFilter, WorldQuery},
 	prelude::*,
 	window::PrimaryWindow,
 };
@@ -68,8 +68,8 @@ fn spawn_particle(
 	action_state: Query<&ActionState<Action>>,
 ) {
 	let action_state = action_state.single();
-	if !action_state.just_pressed(Action::SpawnParticle)
-		|| action_state.pressed(Action::DespawnModifier)
+	if !action_state.just_pressed(&Action::SpawnParticle)
+		|| action_state.pressed(&Action::DespawnModifier)
 	{
 		return;
 	}
@@ -86,8 +86,8 @@ fn despawn_all_particles(
 	particles: Query<Entity, With<Particle>>,
 ) {
 	let action_state = action_state.single();
-	if !action_state.just_pressed(Action::SpawnParticle)
-		|| !action_state.pressed(Action::DespawnModifier)
+	if !action_state.just_pressed(&Action::SpawnParticle)
+		|| !action_state.pressed(&Action::DespawnModifier)
 	{
 		return;
 	}
@@ -103,8 +103,8 @@ fn particles_applying_forces<M, F, F2>(
 	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, F2)>,
 ) where
 	M: Component + MovementTrait,
-	F: WorldQuery + ReadOnlyWorldQuery,
-	F2: WorldQuery + ReadOnlyWorldQuery,
+	F: WorldQuery + QueryFilter,
+	F2: WorldQuery + QueryFilter,
 {
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some(
