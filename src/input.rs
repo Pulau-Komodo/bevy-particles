@@ -25,6 +25,7 @@ pub enum Action {
 	RaiseParticleLimit,
 	LowerParticleLimit,
 	ToggleInertia,
+	ToggleWrap,
 }
 
 fn set_binds(mut commands: Commands) {
@@ -50,6 +51,7 @@ fn set_binds(mut commands: Commands) {
 	input_map.insert(RaiseParticleLimit, ArrowUp);
 	input_map.insert(LowerParticleLimit, ArrowDown);
 	input_map.insert(ToggleInertia, KeyI);
+	input_map.insert(ToggleWrap, KeyW);
 
 	for (key, action) in actions {
 		input_map.insert(action, key);

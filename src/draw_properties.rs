@@ -46,9 +46,8 @@ pub const ATTRACTOR: DrawProperties = DrawProperties {
 pub const REPULSOR: DrawProperties = DrawProperties {
 	draw_priority: 1.4,
 	size: 16.0,
-	color: Color::srgb(0.5, 1.0, 0.5)
+	color: Color::srgb(0.5, 1.0, 0.5),
 };
-
 
 pub const POSITIVE_EATER: DrawProperties = DrawProperties {
 	draw_priority: 4.0,

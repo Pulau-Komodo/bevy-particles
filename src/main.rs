@@ -4,7 +4,8 @@ use bevy::{
 };
 use gizmos::GizmoPlugin;
 use gui::GuiPlugin;
-use input::InputPlugin;
+use input::{Action, InputPlugin};
+use leafwing_input_manager::prelude::ActionState;
 use movement::MovementPlugin;
 use particle::ParticlePlugin;
 
@@ -28,6 +29,7 @@ fn main() {
 		.insert_resource(ClearColor(Color::srgb(0.1, 0.1, 0.1)))
 		.insert_resource(WindowDimensions(window_size))
 		.insert_resource(Time::<Fixed>::from_seconds(TIMESTEP as f64))
+		.init_resource::<WrappingForce>()
 		.add_plugins((
 			DefaultPlugins.set(WindowPlugin {
 				primary_window: Some(Window {
@@ -44,7 +46,7 @@ fn main() {
 			GuiPlugin,
 		))
 		.add_systems(Startup, spawn_camera)
-		.add_systems(Update, update_window_dimensions)
+		.add_systems(Update, (update_window_dimensions, toggle_wrap))
 		.run();
 }
 
@@ -80,4 +82,19 @@ fn update_window_dimensions(
 	}
 
 	dimensions.0 = actual_dimensions;
+}
+
+#[derive(Resource)]
+pub struct WrappingForce(bool);
+
+impl Default for WrappingForce {
+	fn default() -> Self {
+		Self(true)
+	}
+}
+
+fn toggle_wrap(action_state: Query<&ActionState<Action>>, mut wrapping: ResMut<WrappingForce>) {
+	if action_state.single().just_pressed(&Action::ToggleWrap) {
+		wrapping.0 = !wrapping.0;
+	}
 }

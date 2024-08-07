@@ -6,11 +6,11 @@ use bevy::{
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-	common::{calculate_force, circular_points, wrapping_offset_2d, Positive},
+	common::{calculate_force, circular_points, offset_2d, wrapping_offset_2d, Positive},
 	draw_properties::{self, DrawProperties},
 	input::Action,
 	movement::{merge_speed, Movement, MovementBatch2, MovementTrait},
-	unwrap_or_return, WindowDimensions, TIMESTEP,
+	unwrap_or_return, WindowDimensions, WrappingForce, TIMESTEP,
 };
 
 pub struct ParticlePlugin;
@@ -99,6 +99,7 @@ fn despawn_all_particles(
 
 fn particles_applying_forces<M, F, F2>(
 	window_dimensions: Res<WindowDimensions>,
+	wrapping: Res<WrappingForce>,
 	mut particles: Query<(&mut M, Option<&Positive>, &Transform), (With<Particle>, F)>,
 	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, F2)>,
 ) where
@@ -115,10 +116,10 @@ fn particles_applying_forces<M, F, F2>(
 			BASE_FORCE,
 			PROXIMITY_FORCE_CAP,
 			DIMINISHING_POWER,
-			wrapping_offset_2d(
+			offset_2d(
 				transform_a.translation.truncate(),
 				transform_b.translation.truncate(),
-				window_dimensions.0,
+				wrapping.0.then_some(window_dimensions.0),
 			),
 		);
 		let invert_force = if positive_a.is_some() != positive_b.is_some() {
@@ -138,10 +139,10 @@ fn particles_applying_forces<M, F, F2>(
 				BASE_FORCE,
 				PROXIMITY_FORCE_CAP,
 				DIMINISHING_POWER,
-				wrapping_offset_2d(
+				offset_2d(
 					transform_a.translation.truncate(),
 					transform_b.translation.truncate(),
-					window_dimensions.0,
+					wrapping.0.then_some(window_dimensions.0),
 				),
 			);
 			let invert_force = if positive_a.is_some() != positive_b.is_some() {

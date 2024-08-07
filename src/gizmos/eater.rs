@@ -1,13 +1,11 @@
 use bevy::prelude::*;
 
 use crate::{
-	common::{
-		calculate_force, circular_points, find_nearest_within_radius, wrapping_offset_2d, Positive,
-	},
+	common::{calculate_force, circular_points, find_nearest_within_radius, offset_2d, Positive},
 	draw_properties,
 	movement::{Movement, MovementTrait},
 	particle::{spawn_particle_at_location, Cancelled, NextBatch, Particle},
-	WindowDimensions, TIMESTEP,
+	WindowDimensions, WrappingForce, TIMESTEP,
 };
 
 /// The radius inside the particle eater will eat particles.
@@ -93,6 +91,7 @@ pub fn activate_eaters(
 
 pub fn eaters_chasing_particles(
 	window_dimensions: Res<WindowDimensions>,
+	wrapping: Res<WrappingForce>,
 	mut eaters: Query<
 		(Option<&Positive>, &mut Movement, &Transform),
 		(With<Eater>, Without<Dormant>),
@@ -105,10 +104,10 @@ pub fn eaters_chasing_particles(
 		for particle_transform in particles.iter().filter_map(|(positive, transform)| {
 			(positive.is_some() != eater_positive.is_some()).then_some(transform)
 		}) {
-			let offset = wrapping_offset_2d(
+			let offset = offset_2d(
 				eater_position,
 				particle_transform.translation.truncate(),
-				window_dimensions.0,
+				wrapping.0.then_some(window_dimensions.0),
 			);
 			let force = calculate_force(
 				BASE_PURSUIT_FORCE,

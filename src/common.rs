@@ -2,6 +2,14 @@ use bevy::prelude::*;
 
 use crate::CLICK_RADIUS;
 
+pub fn offset_2d(first: Vec2, second: Vec2, wrap: Option<Vec2>) -> Vec2 {
+	if let Some(wrap) = wrap {
+		wrapping_offset_2d(first, second, wrap)
+	} else {
+		first - second
+	}
+}
+
 pub fn wrapping_offset_2d(first: Vec2, second: Vec2, wrap: Vec2) -> Vec2 {
 	Vec2::new(
 		wrapping_offset(first.x, second.x, wrap.x),

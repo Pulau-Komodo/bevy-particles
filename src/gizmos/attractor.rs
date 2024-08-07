@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
 use crate::{
-	common::{calculate_force, wrapping_offset_2d},
+	common::{calculate_force, offset_2d},
 	movement::{Movement, MovementTrait},
 	particle::Particle,
-	WindowDimensions, TIMESTEP,
+	WindowDimensions, WrappingForce, TIMESTEP,
 };
 
 #[derive(Component)]
@@ -26,16 +26,17 @@ impl Default for Attractor {
 
 pub fn activate_attractors(
 	window_dimensions: Res<WindowDimensions>,
+	wrapping: Res<WrappingForce>,
 	attractors: Query<(&Attractor, &Transform)>,
 	mut particles: Query<(&mut Movement, &Transform), With<Particle>>,
 ) {
 	for (attractor, attractor_transform) in &attractors {
 		let attractor_position = attractor_transform.translation.truncate();
 		for (mut movement, particle_transform) in &mut particles {
-			let offset = wrapping_offset_2d(
+			let offset = offset_2d(
 				attractor_position,
 				particle_transform.translation.truncate(),
-				window_dimensions.0,
+				wrapping.0.then_some(window_dimensions.0),
 			);
 			let force = calculate_force(attractor.force, 10.0, 1.05, offset) * TIMESTEP;
 
