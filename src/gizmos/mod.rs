@@ -135,7 +135,7 @@ impl GizmoComponent {
 			GizmoType::Emitter => Self::Emitter(Emitter::default()),
 			GizmoType::Deleter => Self::Deleter(Deleter::default()),
 			GizmoType::Attractor => Self::Attractor(Attractor::default()),
-			GizmoType::Repulsor => Self::Repulsor(Attractor::default().invert()),
+			GizmoType::Repulsor => Self::Repulsor(Attractor::repulsor()),
 			GizmoType::Eater => Self::Eater(Eater::default()),
 		}
 	}

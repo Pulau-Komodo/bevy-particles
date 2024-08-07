@@ -10,17 +10,27 @@ use crate::{
 #[derive(Component)]
 pub struct Attractor {
 	force: f32,
+	fall_off: f32,
+	proximity_cap: f32,
 }
 
 impl Attractor {
-	pub fn invert(self) -> Self {
-		Self { force: -self.force }
+	pub fn repulsor() -> Self {
+		Self {
+			force: -30000.0,
+			fall_off: 1.5,
+			proximity_cap: 2.0,
+		}
 	}
 }
 
 impl Default for Attractor {
 	fn default() -> Self {
-		Self { force: 10000.0 }
+		Self {
+			force: 10000.0,
+			fall_off: 1.05,
+			proximity_cap: 10.0,
+		}
 	}
 }
 
@@ -38,7 +48,8 @@ pub fn activate_attractors(
 				particle_transform.translation.truncate(),
 				wrapping.0.then_some(window_dimensions.0),
 			);
-			let force = calculate_force(attractor.force, 10.0, 1.05, offset) * TIMESTEP;
+			let force =
+				calculate_force(attractor.force, attractor.proximity_cap, attractor.fall_off, offset) * TIMESTEP;
 
 			movement.add(force);
 		}
