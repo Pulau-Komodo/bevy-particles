@@ -40,8 +40,15 @@ pub const DELETER: DrawProperties = DrawProperties {
 pub const ATTRACTOR: DrawProperties = DrawProperties {
 	draw_priority: 1.5,
 	size: 15.0,
-	color: Color::srgb(0.5019608, 0.0, 0.5019608),
+	color: Color::srgb(0.5, 0.0, 0.5),
 };
+
+pub const REPULSOR: DrawProperties = DrawProperties {
+	draw_priority: 1.4,
+	size: 16.0,
+	color: Color::srgb(0.5, 1.0, 0.5)
+};
+
 
 pub const POSITIVE_EATER: DrawProperties = DrawProperties {
 	draw_priority: 4.0,

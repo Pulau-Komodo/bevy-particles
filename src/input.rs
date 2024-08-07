@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use leafwing_input_manager::{prelude::*, user_input::InputKind};
+use leafwing_input_manager::prelude::*;
 
 pub struct InputPlugin;
 
@@ -17,6 +17,7 @@ pub enum Action {
 	NegativeEmitter,
 	Deleter,
 	Attractor,
+	Repulsor,
 	PositiveEater,
 	NegativeEater,
 	DespawnModifier,
@@ -35,16 +36,15 @@ fn set_binds(mut commands: Commands) {
 		(Minus, NegativeEmitter),
 		(Digit1, Deleter),
 		(Digit2, Attractor),
+		(Digit3, Repulsor),
 		(BracketLeft, NegativeEater),
 		(BracketRight, PositiveEater),
 	];
 
-	let left_click: InputKind = MouseButton::Left.into();
-
 	let mut input_map = InputMap::default();
-	input_map.insert(SpawnParticle, left_click);
-	input_map.insert(DespawnAllModifier, AltLeft);
-	input_map.insert(DespawnAllModifier, AltRight);
+	input_map.insert(SpawnParticle, MouseButton::Left);
+	input_map.insert(DespawnAllModifier, ControlLeft);
+	input_map.insert(DespawnAllModifier, ControlRight);
 	input_map.insert(DespawnModifier, ShiftLeft);
 	input_map.insert(DespawnModifier, ShiftRight);
 	input_map.insert(RaiseParticleLimit, ArrowUp);

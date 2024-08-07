@@ -29,7 +29,7 @@ pub struct GizmoPlugin;
 
 impl Plugin for GizmoPlugin {
 	fn build(&self, app: &mut App) {
-		app.add_systems(Update, spawn_or_despawn_gizmos)
+		app.add_systems(Update, (spawn_or_despawn_gizmos, adjust_particle_limit))
 			.add_systems(
 				FixedUpdate,
 				(
@@ -39,7 +39,6 @@ impl Plugin for GizmoPlugin {
 					activate_eaters,
 					apply_eater_scale,
 					process_dormant_eaters,
-					adjust_particle_limit,
 				),
 			)
 			.init_resource::<ParticleLimit>();
@@ -59,7 +58,7 @@ struct Gizmo {
 	has_movement: bool,
 }
 
-const GIZMOS: [Gizmo; 4] = [
+const GIZMOS: [Gizmo; 5] = [
 	Gizmo {
 		gizmo_type: GizmoType::Emitter,
 		neutral_or_negative_variant: GizmoVariant {
@@ -91,6 +90,15 @@ const GIZMOS: [Gizmo; 4] = [
 		has_movement: false,
 	},
 	Gizmo {
+		gizmo_type: GizmoType::Repulsor,
+		neutral_or_negative_variant: GizmoVariant {
+			action: Action::Repulsor,
+			draw_properties: draw_properties::REPULSOR,
+		},
+		positive_variant: None,
+		has_movement: false,
+	},
+	Gizmo {
 		gizmo_type: GizmoType::Eater,
 		neutral_or_negative_variant: GizmoVariant {
 			action: Action::NegativeEater,
@@ -109,6 +117,7 @@ enum GizmoType {
 	Emitter,
 	Deleter,
 	Attractor,
+	Repulsor,
 	Eater,
 }
 
@@ -116,6 +125,7 @@ enum GizmoComponent {
 	Emitter(Emitter),
 	Deleter(Deleter),
 	Attractor(Attractor),
+	Repulsor(Attractor),
 	Eater(Eater),
 }
 
@@ -125,6 +135,7 @@ impl GizmoComponent {
 			GizmoType::Emitter => Self::Emitter(Emitter::default()),
 			GizmoType::Deleter => Self::Deleter(Deleter::default()),
 			GizmoType::Attractor => Self::Attractor(Attractor::default()),
+			GizmoType::Repulsor => Self::Repulsor(Attractor::default().invert()),
 			GizmoType::Eater => Self::Eater(Eater::default()),
 		}
 	}
@@ -136,6 +147,7 @@ impl GizmoComponent {
 			Self::Emitter(c) => entity_commands.insert(c),
 			Self::Deleter(c) => entity_commands.insert(c),
 			Self::Attractor(c) => entity_commands.insert(c),
+			Self::Repulsor(c) => entity_commands.insert(c),
 			Self::Eater(c) => entity_commands.insert(c),
 		}
 	}
@@ -159,7 +171,7 @@ fn spawn_or_despawn_gizmos<'a>(
 			(gizmo.positive_variant.as_ref(), true),
 		]
 		.iter()
-		.filter_map(|(x, p)| x.map(|x| (x, p)))
+		.filter_map(|(x, p)| x.to_owned().map(|x| (x, p)))
 		{
 			if action_state.just_pressed(&variant.action) {
 				if action_state.pressed(&Action::DespawnAllModifier) {

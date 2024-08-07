@@ -12,6 +12,12 @@ pub struct Attractor {
 	force: f32,
 }
 
+impl Attractor {
+	pub fn invert(self) -> Self {
+		Self { force: -self.force }
+	}
+}
+
 impl Default for Attractor {
 	fn default() -> Self {
 		Self { force: 10000.0 }
