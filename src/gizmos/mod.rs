@@ -1,4 +1,5 @@
 use bevy::{ecs::system::EntityCommands, prelude::*, window::PrimaryWindow};
+use deleter::{activate_slow_deleters, recharge_slow_deleters, SlowDeleter};
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
@@ -34,11 +35,12 @@ impl Plugin for GizmoPlugin {
 				FixedUpdate,
 				(
 					(activate_attractors, eaters_chasing_particles).before(merge_speed),
-					activate_deleters,
+					((activate_deleters, recharge_slow_deleters), activate_slow_deleters).chain(),
 					activate_emitters,
 					activate_eaters,
 					apply_eater_scale,
 					process_dormant_eaters,
+					
 				),
 			)
 			.init_resource::<ParticleLimit>();
@@ -58,7 +60,7 @@ struct Gizmo {
 	has_movement: bool,
 }
 
-const GIZMOS: [Gizmo; 5] = [
+const GIZMOS: [Gizmo; 6] = [
 	Gizmo {
 		gizmo_type: GizmoType::Emitter,
 		neutral_or_negative_variant: GizmoVariant {
@@ -76,6 +78,15 @@ const GIZMOS: [Gizmo; 5] = [
 		neutral_or_negative_variant: GizmoVariant {
 			action: Action::Deleter,
 			draw_properties: draw_properties::DELETER,
+		},
+		positive_variant: None,
+		has_movement: false,
+	},
+	Gizmo {
+		gizmo_type: GizmoType::SlowDeleter,
+		neutral_or_negative_variant: GizmoVariant {
+			action: Action::SlowDeleter,
+			draw_properties: draw_properties::SLOW_DELETER,
 		},
 		positive_variant: None,
 		has_movement: false,
@@ -116,6 +127,7 @@ const GIZMOS: [Gizmo; 5] = [
 enum GizmoType {
 	Emitter,
 	Deleter,
+	SlowDeleter,
 	Attractor,
 	Repulsor,
 	Eater,
@@ -124,6 +136,7 @@ enum GizmoType {
 enum GizmoComponent {
 	Emitter(Emitter),
 	Deleter(Deleter),
+	SlowDeleter(SlowDeleter),
 	Attractor(Attractor),
 	Repulsor(Attractor),
 	Eater(Eater),
@@ -134,6 +147,7 @@ impl GizmoComponent {
 		match gizmo_type {
 			GizmoType::Emitter => Self::Emitter(Emitter::default()),
 			GizmoType::Deleter => Self::Deleter(Deleter::default()),
+			GizmoType::SlowDeleter => Self::SlowDeleter(SlowDeleter::default()),
 			GizmoType::Attractor => Self::Attractor(Attractor::default()),
 			GizmoType::Repulsor => Self::Repulsor(Attractor::repulsor()),
 			GizmoType::Eater => Self::Eater(Eater::default()),
@@ -146,6 +160,7 @@ impl GizmoComponent {
 		match self {
 			Self::Emitter(c) => entity_commands.insert(c),
 			Self::Deleter(c) => entity_commands.insert(c),
+			Self::SlowDeleter(c) => entity_commands.insert(c),
 			Self::Attractor(c) => entity_commands.insert(c),
 			Self::Repulsor(c) => entity_commands.insert(c),
 			Self::Eater(c) => entity_commands.insert(c),

@@ -37,6 +37,12 @@ pub const DELETER: DrawProperties = DrawProperties {
 	color: Color::WHITE,
 };
 
+pub const SLOW_DELETER: DrawProperties = DrawProperties {
+	draw_priority: 2.2,
+	size: 15.0,
+	color: Color::srgb(0.8, 0.8, 0.8),
+};
+
 pub const ATTRACTOR: DrawProperties = DrawProperties {
 	draw_priority: 1.5,
 	size: 15.0,
