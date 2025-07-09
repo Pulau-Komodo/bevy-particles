@@ -2,10 +2,10 @@ use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
+	TIMESTEP,
 	common::Positive,
 	input::Action,
-	particle::{spawn_particle_at_location, NextBatch, Particle},
-	TIMESTEP,
+	particle::{NextBatch, Particle, spawn_particle_at_location},
 };
 
 #[derive(Component)]
@@ -81,7 +81,7 @@ pub fn adjust_particle_limit(
 	mut limit: ResMut<ParticleLimit>,
 	action_state: Query<&ActionState<Action>>,
 ) {
-	let action_state = action_state.single();
+	let action_state = action_state.single().unwrap();
 
 	match (
 		action_state.just_pressed(&Action::RaiseParticleLimit),

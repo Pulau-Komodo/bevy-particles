@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::input::Action;
-use crate::{WindowDimensions, TIMESTEP};
+use crate::{TIMESTEP, WindowDimensions};
 
 use leafwing_input_manager::prelude::ActionState;
 
@@ -67,7 +67,11 @@ pub fn apply_movement(
 pub struct Inertia(bool);
 
 pub fn toggle_inertia(mut inertia: ResMut<Inertia>, action_state: Query<&ActionState<Action>>) {
-	if action_state.single().just_pressed(&Action::ToggleInertia) {
+	if action_state
+		.single()
+		.unwrap()
+		.just_pressed(&Action::ToggleInertia)
+	{
 		inertia.0 = !inertia.0;
 	}
 }

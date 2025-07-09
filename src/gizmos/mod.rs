@@ -1,22 +1,23 @@
 use bevy::{ecs::system::EntityCommands, prelude::*, window::PrimaryWindow};
-use deleter::{activate_slow_deleters, recharge_slow_deleters, SlowDeleter};
+use deleter::{SlowDeleter, activate_slow_deleters, recharge_slow_deleters};
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-	common::{find_entity_by_cursor, Positive},
+	WindowDimensions,
+	common::{Positive, find_entity_by_cursor},
 	draw_properties::{self, DrawProperties},
 	input::Action,
-	movement::{merge_speed, Movement},
-	unwrap_or_return, WindowDimensions,
+	movement::{Movement, merge_speed},
+	unwrap_or_return,
 };
 
 use self::{
-	attractor::{activate_attractors, Attractor},
-	deleter::{activate_deleters, Deleter},
+	attractor::{Attractor, activate_attractors},
+	deleter::{Deleter, activate_deleters},
 	eater::{
-		activate_eaters, apply_eater_scale, eaters_chasing_particles, process_dormant_eaters, Eater,
+		Eater, activate_eaters, apply_eater_scale, eaters_chasing_particles, process_dormant_eaters,
 	},
-	emitter::{activate_emitters, adjust_particle_limit, Emitter},
+	emitter::{Emitter, activate_emitters, adjust_particle_limit},
 };
 
 pub use self::emitter::ParticleLimit;
@@ -35,12 +36,15 @@ impl Plugin for GizmoPlugin {
 				FixedUpdate,
 				(
 					(activate_attractors, eaters_chasing_particles).before(merge_speed),
-					((activate_deleters, recharge_slow_deleters), activate_slow_deleters).chain(),
+					(
+						(activate_deleters, recharge_slow_deleters),
+						activate_slow_deleters,
+					)
+						.chain(),
 					activate_emitters,
 					activate_eaters,
 					apply_eater_scale,
 					process_dormant_eaters,
-					
 				),
 			)
 			.init_resource::<ParticleLimit>();
@@ -175,8 +179,8 @@ fn spawn_or_despawn_gizmos<'a>(
 	action_state: Query<&'a ActionState<Action>>,
 	gizmos: Query<(Entity, &'a Transform, &'a GizmoType, Option<&'a Positive>)>,
 ) {
-	let action_state = action_state.single();
-	let window = unwrap_or_return!(window.get_single().ok());
+	let action_state = action_state.single().unwrap();
+	let window = unwrap_or_return!(window.single().ok());
 	let cursor_pos = unwrap_or_return!(window.cursor_position());
 	let cursor_pos = Vec2::new(cursor_pos.x, window.height() - cursor_pos.y);
 
@@ -221,13 +225,10 @@ fn spawn_gizmo<'a>(commands: &'a mut Commands, position: Vec2, gizmo: &'a Gizmo,
 	} = variant.draw_properties;
 
 	let mut entity_commands = commands.spawn((
-		SpriteBundle {
-			sprite: Sprite { color, ..default() },
-			transform: Transform {
-				translation: position.extend(draw_priority),
-				scale: (Vec2::ONE * size).extend(1.0),
-				..default()
-			},
+		Sprite { color, ..default() },
+		Transform {
+			translation: position.extend(draw_priority),
+			scale: (Vec2::ONE * size).extend(1.0),
 			..default()
 		},
 		gizmo.gizmo_type,

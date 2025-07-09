@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
 use crate::{
+	TIMESTEP, WindowDimensions, WrappingForce,
 	common::{calculate_force, offset_2d},
 	movement::{Movement, MovementTrait},
 	particle::Particle,
-	WindowDimensions, WrappingForce, TIMESTEP,
 };
 
 #[derive(Component)]
@@ -48,8 +48,12 @@ pub fn activate_attractors(
 				particle_transform.translation.truncate(),
 				wrapping.0.then_some(window_dimensions.0),
 			);
-			let force =
-				calculate_force(attractor.force, attractor.proximity_cap, attractor.fall_off, offset) * TIMESTEP;
+			let force = calculate_force(
+				attractor.force,
+				attractor.proximity_cap,
+				attractor.fall_off,
+				offset,
+			) * TIMESTEP;
 
 			movement.add(force);
 		}

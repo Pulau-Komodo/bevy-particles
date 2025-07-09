@@ -9,6 +9,7 @@ use leafwing_input_manager::prelude::ActionState;
 use movement::MovementPlugin;
 use particle::ParticlePlugin;
 
+mod assets;
 mod common;
 mod draw_properties;
 mod gizmos;
@@ -51,14 +52,13 @@ fn main() {
 }
 
 fn spawn_camera(mut commands: Commands) {
-	commands.spawn(Camera2dBundle {
-		projection: OrthographicProjection {
+	commands.spawn((
+		Camera2d,
+		Projection::Orthographic(OrthographicProjection {
 			viewport_origin: Vec2::ZERO,
-			near: -1000.0,
-			..default()
-		},
-		..default()
-	});
+			..OrthographicProjection::default_2d()
+		}),
+	));
 }
 
 #[derive(Resource)]
@@ -75,7 +75,7 @@ fn update_window_dimensions(
 	windows: Query<&Window, With<PrimaryWindow>>,
 	mut dimensions: ResMut<WindowDimensions>,
 ) {
-	let primary = unwrap_or_return!(windows.get_single().ok());
+	let primary = unwrap_or_return!(windows.single().ok());
 	let actual_dimensions = Vec2::new(primary.width(), primary.height());
 	if actual_dimensions.x == 0.0 || actual_dimensions.y == 0.0 {
 		return;
@@ -94,7 +94,11 @@ impl Default for WrappingForce {
 }
 
 fn toggle_wrap(action_state: Query<&ActionState<Action>>, mut wrapping: ResMut<WrappingForce>) {
-	if action_state.single().just_pressed(&Action::ToggleWrap) {
+	if action_state
+		.single()
+		.unwrap()
+		.just_pressed(&Action::ToggleWrap)
+	{
 		wrapping.0 = !wrapping.0;
 	}
 }

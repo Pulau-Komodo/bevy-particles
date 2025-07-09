@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 
 use crate::{
-	common::{calculate_force, circular_points, find_nearest_within_radius, offset_2d, Positive},
+	TIMESTEP, WindowDimensions, WrappingForce,
+	common::{Positive, calculate_force, circular_points, find_nearest_within_radius, offset_2d},
 	draw_properties,
 	movement::{Movement, MovementTrait},
-	particle::{spawn_particle_at_location, Cancelled, NextBatch, Particle},
-	WindowDimensions, WrappingForce, TIMESTEP,
+	particle::{Cancelled, NextBatch, Particle, spawn_particle_at_location},
 };
 
 /// The radius inside the particle eater will eat particles.

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{common::wrapping_offset_2d, particle::Particle, WindowDimensions, TIMESTEP};
+use crate::{TIMESTEP, WindowDimensions, common::wrapping_offset_2d, particle::Particle};
 
 #[derive(Component)]
 pub struct Deleter {
@@ -53,7 +53,9 @@ pub struct SlowDeleter {
 impl SlowDeleter {
 	pub fn new(radius: f32, rate: f32) -> Self {
 		Self {
-			radius_squared: radius.powi(2), rate, charge: 0.0,
+			radius_squared: radius.powi(2),
+			rate,
+			charge: 0.0,
 		}
 	}
 }
@@ -90,9 +92,7 @@ pub fn activate_slow_deleters(
 	}
 }
 
-pub(crate) fn recharge_slow_deleters(
-	mut deleters: Query<&mut SlowDeleter>,
-) {
+pub(crate) fn recharge_slow_deleters(mut deleters: Query<&mut SlowDeleter>) {
 	for mut deleter in &mut deleters {
 		deleter.charge += deleter.rate / TIMESTEP;
 	}

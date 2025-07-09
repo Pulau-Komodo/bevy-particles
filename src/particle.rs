@@ -6,11 +6,12 @@ use bevy::{
 use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
-	common::{calculate_force, circular_points, offset_2d, wrapping_offset_2d, Positive},
+	TIMESTEP, WindowDimensions, WrappingForce,
+	common::{Positive, calculate_force, circular_points, offset_2d, wrapping_offset_2d},
 	draw_properties::{self, DrawProperties},
 	input::Action,
-	movement::{merge_speed, Movement, MovementBatch2, MovementTrait},
-	unwrap_or_return, WindowDimensions, WrappingForce, TIMESTEP,
+	movement::{Movement, MovementBatch2, MovementTrait, merge_speed},
+	unwrap_or_return,
 };
 
 pub struct ParticlePlugin;
@@ -67,15 +68,17 @@ fn spawn_particle(
 	mut next_batch: ResMut<NextBatch>,
 	action_state: Query<&ActionState<Action>>,
 ) {
-	let action_state = action_state.single();
+	let action_state = action_state.single().unwrap();
 	if !action_state.just_pressed(&Action::SpawnParticle)
 		|| action_state.pressed(&Action::DespawnModifier)
 	{
 		return;
 	}
-	let cursor_pos = unwrap_or_return!(window.get_single().ok().and_then(|window| window
-		.cursor_position()
-		.map(|pos| Vec2::new(pos.x, window.height() - pos.y))));
+	let cursor_pos = unwrap_or_return!(window.single().ok().and_then(|window| {
+		window
+			.cursor_position()
+			.map(|pos| Vec2::new(pos.x, window.height() - pos.y))
+	}));
 
 	spawn_particle_at_location(&mut commands, &mut next_batch, cursor_pos, true);
 }
@@ -85,7 +88,7 @@ fn despawn_all_particles(
 	action_state: Query<&ActionState<Action>>,
 	particles: Query<Entity, With<Particle>>,
 ) {
-	let action_state = action_state.single();
+	let action_state = action_state.single().unwrap();
 	if !action_state.just_pressed(&Action::SpawnParticle)
 		|| !action_state.pressed(&Action::DespawnModifier)
 	{
@@ -103,13 +106,16 @@ fn particles_applying_forces<M, F, F2>(
 	mut particles: Query<(&mut M, Option<&Positive>, &Transform), (With<Particle>, F)>,
 	other_particles: Query<(Option<&Positive>, &Transform), (With<Particle>, F2)>,
 ) where
-	M: Component + MovementTrait,
+	M: Component<Mutability = bevy::ecs::component::Mutable> + MovementTrait,
 	F: WorldQuery + QueryFilter,
 	F2: WorldQuery + QueryFilter,
 {
 	let mut combinations = particles.iter_combinations_mut();
 	while let Some(
-		[(mut movement_a, positive_a, transform_a), (mut movement_b, positive_b, transform_b)],
+		[
+			(mut movement_a, positive_a, transform_a),
+			(mut movement_b, positive_b, transform_b),
+		],
 	) = combinations.fetch_next()
 	{
 		let force = calculate_force(
@@ -209,7 +215,7 @@ fn spawn_initial_particles(
 
 #[derive(Bundle, Default)]
 struct ParticleBundle {
-	sprite_bundle: SpriteBundle,
+	sprite: Sprite,
 	particle: Particle,
 	movement: Movement,
 	cancelled: Cancelled,
@@ -232,19 +238,17 @@ pub fn spawn_particle_at_location(
 		color,
 	} = draw_properties;
 
-	let mut entity_commands = commands.spawn(ParticleBundle {
-		sprite_bundle: SpriteBundle {
+	let mut entity_commands = commands.spawn((
+		ParticleBundle {
 			sprite: Sprite { color, ..default() },
-			transform: Transform {
-				translation: position.extend(draw_priority),
-				scale: (Vec2::ONE * size).extend(1.0),
-				..default()
-			},
 			..default()
 		},
-		particle: Particle::new(),
-		..default()
-	});
+		Transform {
+			translation: position.extend(draw_priority),
+			scale: (Vec2::ONE * size).extend(1.0),
+			..default()
+		},
+	));
 	if positive {
 		entity_commands.insert(Positive);
 	}
