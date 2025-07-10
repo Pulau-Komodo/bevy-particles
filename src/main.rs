@@ -9,6 +9,8 @@ use leafwing_input_manager::prelude::ActionState;
 use movement::MovementPlugin;
 use particle::ParticlePlugin;
 
+use crate::assets::{TextureMap, load_assets};
+
 mod assets;
 mod common;
 mod draw_properties;
@@ -46,7 +48,8 @@ fn main() {
 			GizmoPlugin,
 			GuiPlugin,
 		))
-		.add_systems(Startup, spawn_camera)
+		.add_systems(Startup, (spawn_camera, load_assets))
+		.init_resource::<TextureMap>()
 		.add_systems(Update, (update_window_dimensions, toggle_wrap))
 		.run();
 }

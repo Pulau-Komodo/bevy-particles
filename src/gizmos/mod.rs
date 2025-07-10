@@ -4,6 +4,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
 	WindowDimensions,
+	assets::TextureMap,
 	common::{Positive, find_entity_by_cursor},
 	draw_properties::{self, DrawProperties},
 	input::Action,
@@ -174,6 +175,7 @@ impl GizmoComponent {
 
 fn spawn_or_despawn_gizmos<'a>(
 	mut commands: Commands,
+	texture_map: Res<TextureMap>,
 	window: Query<&Window, With<PrimaryWindow>>,
 	window_dimensions: Res<WindowDimensions>,
 	action_state: Query<&'a ActionState<Action>>,
@@ -194,25 +196,31 @@ fn spawn_or_despawn_gizmos<'a>(
 		{
 			if action_state.just_pressed(&variant.action) {
 				if action_state.pressed(&Action::DespawnAllModifier) {
-					despawn_all_gizmos(&mut commands, &gizmo, &gizmos, *positive);
+					despawn_all_gizmos(&mut commands, &gizmo, gizmos, *positive);
 				} else if action_state.pressed(&Action::DespawnModifier) {
 					despawn_gizmo(
 						&mut commands,
 						cursor_pos,
 						window_dimensions.0,
 						&gizmo,
-						&gizmos,
+						gizmos,
 						*positive,
 					);
 				} else {
-					spawn_gizmo(&mut commands, cursor_pos, &gizmo, *positive);
+					spawn_gizmo(&mut commands, &texture_map, cursor_pos, &gizmo, *positive);
 				}
 			}
 		}
 	}
 }
 
-fn spawn_gizmo<'a>(commands: &'a mut Commands, position: Vec2, gizmo: &'a Gizmo, positive: bool) {
+fn spawn_gizmo<'a>(
+	commands: &'a mut Commands,
+	texture_map: &Res<TextureMap>,
+	position: Vec2,
+	gizmo: &'a Gizmo,
+	positive: bool,
+) {
 	let variant = if positive {
 		gizmo.positive_variant.as_ref().unwrap()
 	} else {
@@ -222,10 +230,20 @@ fn spawn_gizmo<'a>(commands: &'a mut Commands, position: Vec2, gizmo: &'a Gizmo,
 		draw_priority,
 		size,
 		color,
+		texture,
 	} = variant.draw_properties;
 
+	let image = texture
+		.and_then(|texture| texture_map.0.get(&texture))
+		.cloned()
+		.unwrap_or_default();
+
 	let mut entity_commands = commands.spawn((
-		Sprite { color, ..default() },
+		Sprite {
+			color,
+			image,
+			..default()
+		},
 		Transform {
 			translation: position.extend(draw_priority),
 			scale: (Vec2::ONE * size).extend(1.0),

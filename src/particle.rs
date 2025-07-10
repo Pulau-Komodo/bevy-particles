@@ -236,6 +236,7 @@ pub fn spawn_particle_at_location(
 		draw_priority,
 		size,
 		color,
+		texture,
 	} = draw_properties;
 
 	let mut entity_commands = commands.spawn((

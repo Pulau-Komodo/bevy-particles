@@ -59,8 +59,5 @@ fn set_binds(mut commands: Commands) {
 		input_map.insert(action, key);
 	}
 
-	commands.spawn(InputManagerBundle::<Action> {
-		input_map,
-		..default()
-	});
+	commands.spawn(input_map);
 }
