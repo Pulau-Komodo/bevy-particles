@@ -7,6 +7,7 @@ use crate::{
 	assets::TextureMap,
 	common::{Positive, find_entity_by_cursor},
 	draw_properties::{self, DrawProperties},
+	gizmos::pusher::{activate_pushers, place_pusher},
 	input::Action,
 	movement::{Movement, merge_speed},
 	unwrap_or_return,
@@ -27,28 +28,37 @@ mod attractor;
 mod deleter;
 mod eater;
 mod emitter;
+mod pusher;
 
 pub struct GizmoPlugin;
 
 impl Plugin for GizmoPlugin {
 	fn build(&self, app: &mut App) {
-		app.add_systems(Update, (spawn_or_despawn_gizmos, adjust_particle_limit))
-			.add_systems(
-				FixedUpdate,
+		app.add_systems(
+			Update,
+			(spawn_or_despawn_gizmos, place_pusher, adjust_particle_limit),
+		)
+		.add_systems(
+			FixedUpdate,
+			(
 				(
-					(activate_attractors, eaters_chasing_particles).before(merge_speed),
-					(
-						(activate_deleters, recharge_slow_deleters),
-						activate_slow_deleters,
-					)
-						.chain(),
-					activate_emitters,
-					activate_eaters,
-					apply_eater_scale,
-					process_dormant_eaters,
-				),
-			)
-			.init_resource::<ParticleLimit>();
+					activate_attractors,
+					eaters_chasing_particles,
+					activate_pushers,
+				)
+					.before(merge_speed),
+				(
+					(activate_deleters, recharge_slow_deleters),
+					activate_slow_deleters,
+				)
+					.chain(),
+				activate_emitters,
+				activate_eaters,
+				apply_eater_scale,
+				process_dormant_eaters,
+			),
+		)
+		.init_resource::<ParticleLimit>();
 	}
 }
 

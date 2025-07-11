@@ -64,6 +64,13 @@ pub const REPULSOR: DrawProperties = DrawProperties {
 	texture: None,
 };
 
+pub const PUSHER: DrawProperties = DrawProperties {
+	draw_priority: 5.0,
+	size: 1.0,
+	color: Color::WHITE,
+	texture: Some(crate::assets::Texture::Pusher),
+};
+
 pub const POSITIVE_EATER: DrawProperties = DrawProperties {
 	draw_priority: 4.0,
 	size: 10.0,

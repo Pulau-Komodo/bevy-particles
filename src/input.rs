@@ -21,6 +21,7 @@ pub enum Action {
 	Repulsor,
 	PositiveEater,
 	NegativeEater,
+	Pusher,
 	DespawnModifier,
 	DespawnAllModifier,
 	RaiseParticleLimit,
@@ -42,6 +43,7 @@ fn set_binds(mut commands: Commands) {
 		(Digit3, Repulsor),
 		(BracketLeft, NegativeEater),
 		(BracketRight, PositiveEater),
+		(Period, Pusher),
 	];
 
 	let mut input_map = InputMap::default();
