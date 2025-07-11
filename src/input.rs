@@ -10,7 +10,7 @@ impl Plugin for InputPlugin {
 	}
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Reflect, Actionlike)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Reflect, Actionlike)]
 pub enum Action {
 	SpawnParticle,
 	PositiveEmitter,

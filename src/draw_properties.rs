@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+#[derive(Debug, Clone, Copy)]
 pub struct DrawProperties {
 	/// Higher means more towards front.
 	pub draw_priority: f32,

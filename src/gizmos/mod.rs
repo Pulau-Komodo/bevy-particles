@@ -7,7 +7,7 @@ use crate::{
 	assets::TextureMap,
 	common::{Positive, find_entity_by_cursor},
 	draw_properties::{self, DrawProperties},
-	gizmos::pusher::{activate_pushers, place_pusher},
+	gizmos::pusher::{Pusher, activate_pushers},
 	input::Action,
 	movement::{Movement, merge_speed},
 	unwrap_or_return,
@@ -34,34 +34,49 @@ pub struct GizmoPlugin;
 
 impl Plugin for GizmoPlugin {
 	fn build(&self, app: &mut App) {
-		app.add_systems(
-			Update,
-			(spawn_or_despawn_gizmos, place_pusher, adjust_particle_limit),
-		)
-		.add_systems(
-			FixedUpdate,
-			(
+		app.add_systems(Update, (spawn_or_despawn_gizmos, adjust_particle_limit))
+			.add_systems(
+				FixedUpdate,
 				(
-					activate_attractors,
-					eaters_chasing_particles,
-					activate_pushers,
-				)
-					.before(merge_speed),
-				(
-					(activate_deleters, recharge_slow_deleters),
-					activate_slow_deleters,
-				)
-					.chain(),
-				activate_emitters,
-				activate_eaters,
-				apply_eater_scale,
-				process_dormant_eaters,
-			),
-		)
-		.init_resource::<ParticleLimit>();
+					(
+						activate_attractors,
+						eaters_chasing_particles,
+						activate_pushers,
+					)
+						.before(merge_speed),
+					(
+						(activate_deleters, recharge_slow_deleters),
+						activate_slow_deleters,
+					)
+						.chain(),
+					activate_emitters,
+					activate_eaters,
+					apply_eater_scale,
+					process_dormant_eaters,
+				),
+			)
+			.init_resource::<ParticleLimit>();
 	}
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PlacementStyle {
+	Instant,
+	WithRotation,
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+struct BeingPlaced;
+
+enum GizmoVariants {
+	Neutral(GizmoVariant),
+	Polar {
+		negative: GizmoVariant,
+		positive: GizmoVariant,
+	},
+}
+
+#[derive(Debug, Clone, Copy)]
 struct GizmoVariant {
 	action: Action,
 	draw_properties: DrawProperties,
@@ -69,72 +84,86 @@ struct GizmoVariant {
 
 struct Gizmo {
 	gizmo_type: GizmoType,
-	neutral_or_negative_variant: GizmoVariant,
-	/// The presence of this implies the other variant is negative.
-	positive_variant: Option<GizmoVariant>,
+	variants: GizmoVariants,
 	has_movement: bool,
+	placement_style: PlacementStyle,
 }
 
-const GIZMOS: [Gizmo; 6] = [
+const GIZMOS: [Gizmo; 7] = [
 	Gizmo {
 		gizmo_type: GizmoType::Emitter,
-		neutral_or_negative_variant: GizmoVariant {
-			action: Action::NegativeEmitter,
-			draw_properties: draw_properties::NEGATIVE_EMITTER,
+		variants: GizmoVariants::Polar {
+			negative: GizmoVariant {
+				action: Action::NegativeEmitter,
+				draw_properties: draw_properties::NEGATIVE_EMITTER,
+			},
+			positive: GizmoVariant {
+				action: Action::PositiveEmitter,
+				draw_properties: draw_properties::POSITIVE_EMITTER,
+			},
 		},
-		positive_variant: Some(GizmoVariant {
-			action: Action::PositiveEmitter,
-			draw_properties: draw_properties::POSITIVE_EMITTER,
-		}),
 		has_movement: false,
+		placement_style: PlacementStyle::Instant,
 	},
 	Gizmo {
 		gizmo_type: GizmoType::Deleter,
-		neutral_or_negative_variant: GizmoVariant {
+		variants: GizmoVariants::Neutral(GizmoVariant {
 			action: Action::Deleter,
 			draw_properties: draw_properties::DELETER,
-		},
-		positive_variant: None,
+		}),
 		has_movement: false,
+		placement_style: PlacementStyle::Instant,
 	},
 	Gizmo {
 		gizmo_type: GizmoType::SlowDeleter,
-		neutral_or_negative_variant: GizmoVariant {
+		variants: GizmoVariants::Neutral(GizmoVariant {
 			action: Action::SlowDeleter,
 			draw_properties: draw_properties::SLOW_DELETER,
-		},
-		positive_variant: None,
+		}),
 		has_movement: false,
+		placement_style: PlacementStyle::Instant,
 	},
 	Gizmo {
 		gizmo_type: GizmoType::Attractor,
-		neutral_or_negative_variant: GizmoVariant {
+		variants: GizmoVariants::Neutral(GizmoVariant {
 			action: Action::Attractor,
 			draw_properties: draw_properties::ATTRACTOR,
-		},
-		positive_variant: None,
+		}),
 		has_movement: false,
+		placement_style: PlacementStyle::Instant,
 	},
 	Gizmo {
 		gizmo_type: GizmoType::Repulsor,
-		neutral_or_negative_variant: GizmoVariant {
+		variants: GizmoVariants::Neutral(GizmoVariant {
 			action: Action::Repulsor,
 			draw_properties: draw_properties::REPULSOR,
-		},
-		positive_variant: None,
+		}),
 		has_movement: false,
+		placement_style: PlacementStyle::Instant,
+	},
+	Gizmo {
+		gizmo_type: GizmoType::Pusher,
+		variants: GizmoVariants::Neutral(GizmoVariant {
+			action: Action::Pusher,
+			draw_properties: draw_properties::PUSHER,
+		}),
+		has_movement: false,
+		placement_style: PlacementStyle::WithRotation,
 	},
 	Gizmo {
 		gizmo_type: GizmoType::Eater,
-		neutral_or_negative_variant: GizmoVariant {
-			action: Action::NegativeEater,
-			draw_properties: draw_properties::NEGATIVE_EATER,
+		variants: GizmoVariants::Polar {
+			negative: GizmoVariant {
+				action: Action::NegativeEater,
+				draw_properties: draw_properties::NEGATIVE_EATER,
+			},
+			positive: GizmoVariant {
+				action: Action::PositiveEater,
+				draw_properties: draw_properties::POSITIVE_EATER,
+			},
 		},
-		positive_variant: Some(GizmoVariant {
-			action: Action::PositiveEater,
-			draw_properties: draw_properties::POSITIVE_EATER,
-		}),
 		has_movement: true,
+		placement_style: PlacementStyle::Instant,
 	},
 ];
 
@@ -145,51 +174,35 @@ enum GizmoType {
 	SlowDeleter,
 	Attractor,
 	Repulsor,
+	Pusher,
 	Eater,
 }
 
-enum GizmoComponent {
-	Emitter(Emitter),
-	Deleter(Deleter),
-	SlowDeleter(SlowDeleter),
-	Attractor(Attractor),
-	Repulsor(Attractor),
-	Eater(Eater),
-}
-
-impl GizmoComponent {
-	fn default_of_type(gizmo_type: GizmoType) -> Self {
-		match gizmo_type {
-			GizmoType::Emitter => Self::Emitter(Emitter::default()),
-			GizmoType::Deleter => Self::Deleter(Deleter::default()),
-			GizmoType::SlowDeleter => Self::SlowDeleter(SlowDeleter::default()),
-			GizmoType::Attractor => Self::Attractor(Attractor::default()),
-			GizmoType::Repulsor => Self::Repulsor(Attractor::repulsor()),
-			GizmoType::Eater => Self::Eater(Eater::default()),
-		}
-	}
+impl GizmoType {
 	fn insert_using<'l, 'a>(
 		self,
 		entity_commands: &'l mut EntityCommands<'a>,
 	) -> &'l mut EntityCommands<'a> {
 		match self {
-			Self::Emitter(c) => entity_commands.insert(c),
-			Self::Deleter(c) => entity_commands.insert(c),
-			Self::SlowDeleter(c) => entity_commands.insert(c),
-			Self::Attractor(c) => entity_commands.insert(c),
-			Self::Repulsor(c) => entity_commands.insert(c),
-			Self::Eater(c) => entity_commands.insert(c),
+			Self::Emitter => entity_commands.insert(Emitter::default()),
+			Self::Deleter => entity_commands.insert(Deleter::default()),
+			Self::SlowDeleter => entity_commands.insert(SlowDeleter::default()),
+			Self::Attractor => entity_commands.insert(Attractor::default()),
+			Self::Repulsor => entity_commands.insert(Attractor::repulsor()),
+			Self::Pusher => entity_commands.insert(Pusher),
+			Self::Eater => entity_commands.insert(Eater::default()),
 		}
 	}
 }
 
-fn spawn_or_despawn_gizmos<'a>(
+fn spawn_or_despawn_gizmos(
 	mut commands: Commands,
 	texture_map: Res<TextureMap>,
 	window: Query<&Window, With<PrimaryWindow>>,
 	window_dimensions: Res<WindowDimensions>,
-	action_state: Query<&'a ActionState<Action>>,
-	gizmos: Query<(Entity, &'a Transform, &'a GizmoType, Option<&'a Positive>)>,
+	action_state: Query<&ActionState<Action>>,
+	gizmos: Query<(Entity, &Transform, &GizmoType, Option<&Positive>), Without<BeingPlaced>>,
+	mut placers: Query<(Entity, &mut Transform, &GizmoType), With<BeingPlaced>>,
 ) {
 	let action_state = action_state.single().unwrap();
 	let window = unwrap_or_return!(window.single().ok());
@@ -197,16 +210,16 @@ fn spawn_or_despawn_gizmos<'a>(
 	let cursor_pos = Vec2::new(cursor_pos.x, window.height() - cursor_pos.y);
 
 	for gizmo in GIZMOS {
-		for (variant, positive) in [
-			(Some(&gizmo.neutral_or_negative_variant), false),
-			(gizmo.positive_variant.as_ref(), true),
-		]
-		.iter()
-		.filter_map(|(x, p)| x.to_owned().map(|x| (x, p)))
-		{
+		let variants = match gizmo.variants {
+			GizmoVariants::Neutral(variant) => [Some((variant, false)), None],
+			GizmoVariants::Polar { negative, positive } => {
+				[Some((negative, false)), Some((positive, true))]
+			}
+		};
+		for (variant, positive) in variants.into_iter().flatten() {
 			if action_state.just_pressed(&variant.action) {
 				if action_state.pressed(&Action::DespawnAllModifier) {
-					despawn_all_gizmos(&mut commands, &gizmo, gizmos, *positive);
+					despawn_all_gizmos(&mut commands, &gizmo, gizmos, positive);
 				} else if action_state.pressed(&Action::DespawnModifier) {
 					despawn_gizmo(
 						&mut commands,
@@ -214,10 +227,36 @@ fn spawn_or_despawn_gizmos<'a>(
 						window_dimensions.0,
 						&gizmo,
 						gizmos,
-						*positive,
+						positive,
 					);
 				} else {
-					spawn_gizmo(&mut commands, &texture_map, cursor_pos, &gizmo, *positive);
+					let is_placer = gizmo.placement_style == PlacementStyle::WithRotation;
+					spawn_gizmo(
+						&mut commands,
+						&texture_map,
+						cursor_pos,
+						&gizmo,
+						&variant,
+						positive,
+						is_placer,
+					);
+				}
+			} else if action_state.pressed(&variant.action) {
+				if gizmo.placement_style == PlacementStyle::WithRotation {
+					for (_, mut transform, gizmo_type) in &mut placers {
+						if *gizmo_type == gizmo.gizmo_type {
+							let offset = cursor_pos - transform.translation.truncate();
+							transform.rotation = Quat::from_rotation_z(offset.to_angle());
+						}
+					}
+				}
+			} else if action_state.just_released(&variant.action) {
+				if gizmo.placement_style == PlacementStyle::WithRotation {
+					for (entity, _, gizmo_type) in &mut placers {
+						if *gizmo_type == gizmo.gizmo_type {
+							commands.entity(entity).remove::<BeingPlaced>();
+						}
+					}
 				}
 			}
 		}
@@ -229,13 +268,10 @@ fn spawn_gizmo<'a>(
 	texture_map: &Res<TextureMap>,
 	position: Vec2,
 	gizmo: &'a Gizmo,
+	variant: &'a GizmoVariant,
 	positive: bool,
+	is_placer: bool,
 ) {
-	let variant = if positive {
-		gizmo.positive_variant.as_ref().unwrap()
-	} else {
-		&gizmo.neutral_or_negative_variant
-	};
 	let DrawProperties {
 		draw_priority,
 		size,
@@ -262,9 +298,11 @@ fn spawn_gizmo<'a>(
 		gizmo.gizmo_type,
 	));
 
-	let component = GizmoComponent::default_of_type(gizmo.gizmo_type);
-	component.insert_using(&mut entity_commands);
+	gizmo.gizmo_type.insert_using(&mut entity_commands);
 
+	if is_placer {
+		entity_commands.insert(BeingPlaced);
+	}
 	if positive {
 		entity_commands.insert(Positive);
 	}
