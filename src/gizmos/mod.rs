@@ -241,20 +241,24 @@ fn spawn_or_despawn_gizmos(
 						is_placer,
 					);
 				}
-			} else if action_state.pressed(&variant.action) {
-				if gizmo.placement_style == PlacementStyle::WithRotation {
+			} else if gizmo.placement_style == PlacementStyle::WithRotation {
+				if action_state.pressed(&variant.action) {
 					for (_, mut transform, gizmo_type) in &mut placers {
 						if *gizmo_type == gizmo.gizmo_type {
 							let offset = cursor_pos - transform.translation.truncate();
 							transform.rotation = Quat::from_rotation_z(offset.to_angle());
 						}
 					}
-				}
-			} else if action_state.just_released(&variant.action) {
-				if gizmo.placement_style == PlacementStyle::WithRotation {
-					for (entity, _, gizmo_type) in &mut placers {
+				} else if action_state.just_released(&variant.action) {
+					for (entity, _, gizmo_type) in &placers {
 						if *gizmo_type == gizmo.gizmo_type {
 							commands.entity(entity).remove::<BeingPlaced>();
+						}
+					}
+				} else {
+					for (entity, _, gizmo_type) in &placers {
+						if *gizmo_type == gizmo.gizmo_type {
+							commands.entity(entity).despawn();
 						}
 					}
 				}
