@@ -7,6 +7,7 @@ use leafwing_input_manager::prelude::ActionState;
 
 use crate::{
 	TIMESTEP, WindowDimensions, WrappingForce,
+	assets::TextureMap,
 	common::{Positive, calculate_force, circular_points, offset_2d, wrapping_offset_2d},
 	draw_properties::{self, DrawProperties},
 	input::Action,
@@ -20,7 +21,13 @@ impl Plugin for ParticlePlugin {
 	fn build(&self, app: &mut App) {
 		app.init_resource::<NextBatch>()
 			.add_systems(Startup, spawn_initial_particles)
-			.add_systems(Update, (spawn_particle, despawn_all_particles))
+			.add_systems(
+				Update,
+				(
+					(spawn_particle, give_particles_sprites).chain(),
+					despawn_all_particles,
+				),
+			)
 			.add_systems(
 				FixedUpdate,
 				(
@@ -52,12 +59,6 @@ const INITIAL_PARTICLE_COUNT: u32 = 1000;
 
 #[derive(Default, Component)]
 pub struct Particle;
-
-impl Particle {
-	pub fn new() -> Self {
-		Self
-	}
-}
 
 #[derive(Default, Component)]
 pub struct Cancelled(pub bool);
@@ -213,14 +214,6 @@ fn spawn_initial_particles(
 	}
 }
 
-#[derive(Bundle, Default)]
-struct ParticleBundle {
-	sprite: Sprite,
-	particle: Particle,
-	movement: Movement,
-	cancelled: Cancelled,
-}
-
 pub fn spawn_particle_at_location(
 	commands: &mut Commands,
 	next_batch: &mut ResMut<NextBatch>,
@@ -235,15 +228,13 @@ pub fn spawn_particle_at_location(
 	let DrawProperties {
 		draw_priority,
 		size,
-		color,
-		texture,
+		..
 	} = draw_properties;
 
 	let mut entity_commands = commands.spawn((
-		ParticleBundle {
-			sprite: Sprite { color, ..default() },
-			..default()
-		},
+		Particle,
+		Movement::default(),
+		Cancelled::default(),
 		Transform {
 			translation: position.extend(draw_priority),
 			scale: (Vec2::ONE * size).extend(1.0),
@@ -259,6 +250,30 @@ pub fn spawn_particle_at_location(
 		next_batch.0 = 0;
 	} else {
 		next_batch.0 += 1;
+	}
+}
+
+fn give_particles_sprites(
+	mut commands: Commands,
+	texture_map: Res<TextureMap>,
+	particles: Query<(Entity, Has<Positive>), (With<Particle>, Without<Sprite>)>,
+) {
+	for (entity, positive) in particles {
+		let draw_properties = if positive {
+			draw_properties::POSITIVE_PARTICLE
+		} else {
+			draw_properties::NEGATIVE_PARTICLE
+		};
+		let image = draw_properties
+			.texture
+			.and_then(|texture| texture_map.0.get(&texture))
+			.cloned()
+			.unwrap_or_default();
+		commands.entity(entity).insert(Sprite {
+			color: draw_properties.color,
+			image,
+			..default()
+		});
 	}
 }
 

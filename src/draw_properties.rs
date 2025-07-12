@@ -11,16 +11,16 @@ pub struct DrawProperties {
 
 pub const POSITIVE_PARTICLE: DrawProperties = DrawProperties {
 	draw_priority: 5.0,
-	size: 5.0,
+	size: 1.0,
 	color: Color::srgb(1.0, 0.5, 0.5),
-	texture: None,
+	texture: Some(crate::assets::Texture::Particle),
 };
 
 pub const NEGATIVE_PARTICLE: DrawProperties = DrawProperties {
 	draw_priority: 5.0,
-	size: 5.0,
+	size: 1.0,
 	color: Color::srgb(0.5, 0.5, 1.0),
-	texture: None,
+	texture: Some(crate::assets::Texture::Particle),
 };
 
 pub const POSITIVE_EMITTER: DrawProperties = DrawProperties {
