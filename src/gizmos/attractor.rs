@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
 	TIMESTEP, WindowDimensions, WrappingForce,
 	common::{calculate_force, offset_2d},
-	movement::{Movement, MovementTrait},
+	movement::Movement,
 	particle::Particle,
 };
 

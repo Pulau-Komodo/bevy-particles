@@ -1,10 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-	WindowDimensions,
-	common::wrapping_offset_2d,
-	gizmos::BeingPlaced,
-	movement::{Movement, MovementTrait},
+	WindowDimensions, common::wrapping_offset_2d, gizmos::BeingPlaced, movement::Movement,
 	particle::Particle,
 };
 

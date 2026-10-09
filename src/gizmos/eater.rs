@@ -4,8 +4,8 @@ use crate::{
 	TIMESTEP, WindowDimensions, WrappingForce,
 	common::{Positive, calculate_force, circular_points, find_nearest_within_radius, offset_2d},
 	draw_properties,
-	movement::{Movement, MovementTrait},
-	particle::{Cancelled, NextBatch, Particle, spawn_particle_at_location},
+	movement::Movement,
+	particle::{Cancelled, Particle, spawn_particle_at_location},
 };
 
 /// The radius inside the particle eater will eat particles.
@@ -47,7 +47,6 @@ pub struct Dormant(f32);
 pub fn activate_eaters(
 	mut commands: Commands,
 	window_dimensions: Res<WindowDimensions>,
-	mut next_batch: ResMut<NextBatch>,
 	mut eaters: Query<(Entity, &mut Eater, Option<&Positive>, &Transform), Without<Dormant>>,
 	mut particles: Query<(Option<&Positive>, &mut Cancelled, &Transform), With<Particle>>,
 ) {
@@ -76,12 +75,7 @@ pub fn activate_eaters(
 			if eater.is_full() {
 				commands.entity(entity).insert(Dormant(10.0));
 				for position in circular_points(eater_location, 25.0, eater.target as u32) {
-					spawn_particle_at_location(
-						&mut commands,
-						&mut next_batch,
-						position,
-						eater_positive.is_some(),
-					);
+					spawn_particle_at_location(&mut commands, position, eater_positive.is_some());
 				}
 			}
 			continue;

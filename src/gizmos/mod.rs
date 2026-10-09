@@ -9,7 +9,7 @@ use crate::{
 	draw_properties::{self, DrawProperties},
 	gizmos::pusher::{Pusher, activate_pushers},
 	input::Action,
-	movement::{Movement, merge_speed},
+	movement::Movement,
 	unwrap_or_return,
 };
 
@@ -38,12 +38,9 @@ impl Plugin for GizmoPlugin {
 			.add_systems(
 				FixedUpdate,
 				(
-					(
-						activate_attractors,
-						eaters_chasing_particles,
-						activate_pushers,
-					)
-						.before(merge_speed),
+					activate_attractors,
+					eaters_chasing_particles,
+					activate_pushers,
 					(
 						(activate_deleters, recharge_slow_deleters),
 						activate_slow_deleters,

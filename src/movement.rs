@@ -11,34 +11,18 @@ impl Plugin for MovementPlugin {
 	fn build(&self, app: &mut App) {
 		app.init_resource::<Inertia>()
 			.add_systems(Update, (toggle_inertia,))
-			.add_systems(
-				FixedUpdate,
-				(merge_speed, clamp_speed, apply_movement).chain(),
-			);
+			.add_systems(FixedUpdate, (clamp_speed, apply_movement).chain());
 	}
 }
 
 /// Maximum speed of any movement in units/second.
 const MAX_SPEED: f32 = 200.0;
 
-pub trait MovementTrait {
-	fn add(&mut self, other: Vec2);
-}
-
 #[derive(Default, Component)]
 pub struct Movement(Vec2);
 
-impl MovementTrait for Movement {
-	fn add(&mut self, movement: Vec2) {
-		self.0 += movement;
-	}
-}
-
-#[derive(Default, Component)]
-pub struct MovementBatch2(Vec2);
-
-impl MovementTrait for MovementBatch2 {
-	fn add(&mut self, movement: Vec2) {
+impl Movement {
+	pub fn add(&mut self, movement: Vec2) {
 		self.0 += movement;
 	}
 }
@@ -73,13 +57,6 @@ pub fn toggle_inertia(mut inertia: ResMut<Inertia>, action_state: Query<&ActionS
 		.just_pressed(&Action::ToggleInertia)
 	{
 		inertia.0 = !inertia.0;
-	}
-}
-
-pub fn merge_speed(mut movers: Query<(&mut Movement, &mut MovementBatch2)>) {
-	for (mut movement, mut movement_2) in &mut movers {
-		movement.0 += movement_2.0;
-		movement_2.0 = Vec2::ZERO;
 	}
 }
 

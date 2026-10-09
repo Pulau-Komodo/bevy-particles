@@ -5,7 +5,7 @@ use crate::{
 	TIMESTEP,
 	common::Positive,
 	input::Action,
-	particle::{NextBatch, Particle, spawn_particle_at_location},
+	particle::{Particle, spawn_particle_at_location},
 };
 
 #[derive(Component)]
@@ -32,7 +32,6 @@ impl Default for Emitter {
 pub fn activate_emitters(
 	mut commands: Commands,
 	limit: Res<ParticleLimit>,
-	mut next_batch: ResMut<NextBatch>,
 	particles: Query<(), With<Particle>>,
 	mut emitters: Query<(&mut Emitter, Option<&Positive>, &Transform)>,
 ) {
@@ -43,12 +42,7 @@ pub fn activate_emitters(
 	for (mut emitter, positive, transform) in &mut emitters {
 		let location = transform.translation.truncate();
 		if emitter.time_since_emitting > emitter.interval {
-			spawn_particle_at_location(
-				&mut commands,
-				&mut next_batch,
-				location,
-				positive.is_some(),
-			);
+			spawn_particle_at_location(&mut commands, location, positive.is_some());
 			emitter.time_since_emitting -= emitter.interval;
 		} else {
 			emitter.time_since_emitting += TIMESTEP;
