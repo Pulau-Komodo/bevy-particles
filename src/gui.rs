@@ -30,7 +30,11 @@ fn set_up_panels(mut commands: Commands, asset_server: Res<AssetServer>) {
 	let font = asset_server.load("fonts/FiraSans-Bold.ttf");
 	commands.spawn((
 		Text(String::from("-")),
-		TextFont::from_font(font.clone()).with_font_size(50.0),
+		TextFont {
+			font: font.clone().into(),
+			font_size: FontSize::Px(50.0),
+			..default()
+		},
 		TextColor(Color::WHITE),
 		Node {
 			align_self: AlignSelf::FlexEnd,
@@ -44,7 +48,11 @@ fn set_up_panels(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 	commands.spawn((
 		Text(String::from("-")),
-		TextFont::from_font(font.clone()).with_font_size(50.0),
+		TextFont {
+			font: font.clone().into(),
+			font_size: FontSize::Px(50.0),
+			..default()
+		},
 		TextColor(Color::WHITE),
 		Node {
 			align_self: AlignSelf::FlexEnd,
@@ -58,7 +66,11 @@ fn set_up_panels(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 	commands.spawn((
 		Text(String::from("-")),
-		TextFont::from_font(font.clone()).with_font_size(30.0),
+		TextFont {
+			font: font.into(),
+			font_size: FontSize::Px(30.0),
+			..default()
+		},
 		TextColor(Color::WHITE),
 		Node {
 			align_self: AlignSelf::FlexEnd,

@@ -36,7 +36,7 @@ fn main() {
 		.add_plugins((
 			DefaultPlugins.set(WindowPlugin {
 				primary_window: Some(Window {
-					resolution: WindowResolution::from(window_size), //::new(window_size.x, window_size.y),
+					resolution: WindowResolution::new(window_size.x as u32, window_size.y as u32),
 					title: String::from("Particle simulator"),
 					..default()
 				}),
