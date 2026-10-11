@@ -9,7 +9,10 @@ use leafwing_input_manager::prelude::ActionState;
 use movement::MovementPlugin;
 use particle::ParticlePlugin;
 
-use crate::assets::{TextureMap, load_assets};
+use crate::{
+	assets::{TextureMap, load_assets},
+	wrap_sprites::{add_wrap_sprites, despawn_wrap_sprites, update_wrap_sprites},
+};
 
 mod assets;
 mod common;
@@ -20,6 +23,7 @@ mod input;
 mod macros;
 mod movement;
 mod particle;
+mod wrap_sprites;
 
 pub const CLICK_RADIUS: f32 = 15.0;
 pub const CLICK_RADIUS_SQUARED: f32 = CLICK_RADIUS * CLICK_RADIUS;
@@ -50,7 +54,16 @@ fn main() {
 		))
 		.add_systems(Startup, (spawn_camera, load_assets))
 		.init_resource::<TextureMap>()
-		.add_systems(Update, (update_window_dimensions, toggle_wrap))
+		.add_systems(
+			Update,
+			(
+				(add_wrap_sprites, update_window_dimensions, toggle_wrap),
+				update_wrap_sprites,
+			)
+				.chain(),
+		)
+		.add_observer(despawn_wrap_sprites)
+		.insert_resource(StaticTransformOptimizations::Disabled)
 		.run();
 }
 
@@ -84,7 +97,9 @@ fn update_window_dimensions(
 		return;
 	}
 
-	dimensions.0 = actual_dimensions;
+	if dimensions.0 != actual_dimensions {
+		dimensions.0 = actual_dimensions;
+	}
 }
 
 #[derive(Resource)]
