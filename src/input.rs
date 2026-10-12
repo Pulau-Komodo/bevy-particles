@@ -10,7 +10,7 @@ impl Plugin for InputPlugin {
 	}
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Reflect, Actionlike)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Reflect, Actionlike)]
 pub enum Action {
 	SpawnParticle,
 	PositiveEmitter,
@@ -61,5 +61,29 @@ fn set_binds(mut commands: Commands) {
 		input_map.insert(action, key);
 	}
 
+	print_binds(&input_map);
+
 	commands.spawn(input_map);
+}
+
+fn print_binds<A: Actionlike + Ord + bevy::reflect::enums::Enum>(input_map: &InputMap<A>) {
+	let mut longest = 0;
+	fn input_to_debug<A: Actionlike, I: std::fmt::Debug>((action, input): (&A, I)) -> (&A, String) {
+		(action, format!("{input:?}"))
+	}
+	let mut actions = input_map
+		.iter_buttonlike()
+		.map(input_to_debug)
+		.chain(input_map.iter_axislike().map(input_to_debug))
+		.chain(input_map.iter_dual_axislike().map(input_to_debug))
+		.chain(input_map.iter_triple_axislike().map(input_to_debug))
+		.inspect(|(a, _)| longest = a.variant_name().len().max(longest))
+		.collect::<Vec<_>>();
+
+	actions.sort_by_key(|(a, _)| *a);
+
+	for (action, buttons) in actions {
+		let action = format!("{action:?}");
+		println!("{action:<longest$} {buttons}");
+	}
 }
